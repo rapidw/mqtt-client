@@ -2,12 +2,13 @@ plugins {
     id 'java-library'
     id 'io.freefair.lombok' version '5.0.0-rc2'
     id 'maven-publish'
+    id 'jacoco'
     id "me.champeau.gradle.jmh" version "0.5.0"
     id 'net.researchgate.release' version '2.8.1'
-    id 'signing'
     id 'se.patrikerdes.use-latest-versions' version '0.2.13'
     id 'com.github.ben-manes.versions' version '0.28.0'
     id "com.jfrog.bintray" version "1.8.4"
+    id "com.github.spotbugs" version "3.0.0"
 }
 
 group = 'io.rapidw.mqtt'
@@ -183,6 +184,12 @@ bintray {
     }
 
     publications = ["mavenJava"]
+}
+
+tasks.withType(com.github.spotbugs.SpotBugsTask) {
+    reports.xml.enabled = false
+    reports.html.enabled = true
+    ignoreFailures = true
 }
 
 afterReleaseBuild.dependsOn bintrayUpload
