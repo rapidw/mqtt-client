@@ -175,12 +175,12 @@ bintray {
                 passphrase = getProp("signing.password")
             }
 
-            mavenCentralSync {
-                sync = true
-                user = getProp("nexusUsername")
-                password = getProp("nexusPassword")
-                close = '1'
-            }
+//            mavenCentralSync {
+//                sync = true
+//                user = getProp("nexusUsername")
+//                password = getProp("nexusPassword")
+//                close = '1'
+//            }
         }
     }
 
