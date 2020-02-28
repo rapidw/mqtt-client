@@ -150,7 +150,7 @@ publishing {
 
 release {
     failOnUnversionedFiles = false
-    pushReleaseVersionBranch = "master"
+//    pushReleaseVersionBranch = "master"
 }
 
 bintray {
