@@ -163,6 +163,7 @@ bintray {
     pkg {
         repo = 'maven'
         name = project.name
+        userOrg = "rapidw"
         licenses = ['Apache-2.0']
         vcsUrl = project.vcsUrl
 

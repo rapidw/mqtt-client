@@ -1,6 +1,7 @@
 package io.rapidw.mqtt.client;
 
 
+import io.netty.handler.ssl.SslHandshakeCompletionEvent;
 import io.rapidw.mqtt.client.handler.*;
 import io.rapidw.mqtt.codec.*;
 import io.netty.bootstrap.Bootstrap;
@@ -13,6 +14,7 @@ import io.netty.util.concurrent.ScheduledFuture;
 import io.rapidw.mqtt.client.handler.*;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
+import org.omg.CORBA.CTX_RESTRICT_SCOPE;
 
 import java.util.Collections;
 import java.util.LinkedList;
@@ -246,6 +248,50 @@ public class MqttConnection {
 
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
+            log.debug("channel active");
+            if (connectionOption.getSslCertificate() == null) {
+                log.debug("raw socket");
+                doConnect(ctx);
+            }
+        }
+
+        @Override
+        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+            log.debug("error", cause);
+            if (cause instanceof ReadTimeoutException && status == Status.CONNECTING) {
+                mqttConnectResultHandler.onTimeout();
+            } else if (cause instanceof DecoderException) {
+                log.error("decoder exception", cause);
+                throwException(new MqttClientException("decoder exception", cause));
+            } else {
+                super.exceptionCaught(ctx, cause);
+            }
+        }
+
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+            if (evt instanceof IdleStateEvent) {
+                IdleStateEvent idleStateEvent = (IdleStateEvent) evt;
+                if (idleStateEvent.state() == IdleState.WRITER_IDLE) {
+                    log.debug("send pingreq");
+                    this.pingReq(ctx.channel());
+                }
+            }
+            if (evt instanceof SslHandshakeCompletionEvent) {
+                log.debug("ssl socket");
+                doConnect(ctx);
+            }
+        }
+
+        @Override
+        public void channelInactive(ChannelHandlerContext ctx) {
+            closePromise.setSuccess(null);
+            log.debug("connection closed");
+        }
+
+        private void doConnect(ChannelHandlerContext ctx) {
+            log.debug("channel active");
 
             val packetBuilder = MqttConnectPacket.builder()
                 .username(connectionOption.getUsername())
@@ -280,37 +326,6 @@ public class MqttConnection {
             }
         }
 
-        @Override
-        public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
-            log.debug("error", cause);
-            if (cause instanceof ReadTimeoutException && status == Status.CONNECTING) {
-                mqttConnectResultHandler.onTimeout();
-            } else if (cause instanceof DecoderException) {
-                log.error("decoder exception", cause);
-                throwException(new MqttClientException("decoder exception", cause));
-            } else {
-                super.exceptionCaught(ctx, cause);
-            }
-        }
-
-
-        @Override
-        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
-            if (evt instanceof IdleStateEvent) {
-                IdleStateEvent idleStateEvent = (IdleStateEvent) evt;
-                if (idleStateEvent.state() == IdleState.WRITER_IDLE) {
-                    log.debug("send pingreq");
-                    this.pingReq(ctx.channel());
-                }
-            }
-        }
-
-        @Override
-        public void channelInactive(ChannelHandlerContext ctx) {
-            closePromise.setSuccess(null);
-            log.debug("connection closed");
-        }
-
         //----------------------------------------------------------------------------------------------------
 
         public void connect(TcpConnectResultHandler tcpMqttConnectResultHandler) {
@@ -320,10 +335,12 @@ public class MqttConnection {
                     channel = channelFuture.channel();
                     tcpMqttConnectResultHandler.onSuccess();
                 } else {
-                    if (future instanceof ConnectTimeoutException) {
+                    val cause = future.cause();
+                    log.debug("tcp connect error", cause);
+                    if (cause instanceof ConnectTimeoutException) {
                         tcpMqttConnectResultHandler.onTimeout();
                     } else {
-                        tcpMqttConnectResultHandler.onError(channelFuture.cause());
+                        tcpMqttConnectResultHandler.onError(cause);
                     }
                     status = Status.CLOSED;
                     closePromise.setSuccess(null);

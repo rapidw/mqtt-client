@@ -7,7 +7,7 @@
         </encoder>
     </appender>
 
-    <logger name="io.waferproject.mqtt" level="debug"/>
+    <logger name="io.rapidw.mqtt" level="debug"/>
 
     <root level="info">
         <appender-ref ref="STDOUT" />
