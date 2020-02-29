@@ -8,6 +8,7 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.rapidw.mqtt.codec.MqttDecoder;
 import io.rapidw.mqtt.codec.MqttEncoder;
 import lombok.extern.slf4j.Slf4j;
+import lombok.val;
 
 import javax.net.ssl.TrustManagerFactory;
 import java.security.KeyStore;
@@ -27,20 +28,25 @@ class MqttChannelInitializer extends ChannelInitializer<NioSocketChannel> {
     @Override
     protected void initChannel(NioSocketChannel channel) throws Exception {
         ChannelPipeline pipeline = channel.pipeline();
-        if (connectionOption.getSslCertificate() != null) {
+        val sslCert = connectionOption.getSslCertificate();
+        if (sslCert != null) {
             CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
-            X509Certificate cert = (X509Certificate) certificateFactory.generateCertificate(connectionOption.getSslCertificate());
-            String alias = cert.getSubjectX500Principal().getName();
+            try {
+                X509Certificate cert = (X509Certificate) certificateFactory.generateCertificate(sslCert);
+                String alias = cert.getSubjectX500Principal().getName();
 
-            KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-            keyStore.load(null, null);
-            keyStore.setCertificateEntry(alias, cert);
+                KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+                keyStore.load(null, null);
+                keyStore.setCertificateEntry(alias, cert);
 
-            TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            tmf.init(keyStore);
+                TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+                tmf.init(keyStore);
 
-            SslContext sslContext = SslContextBuilder.forClient().trustManager(tmf).startTls(false).build();
-            pipeline.addFirst(sslContext.newHandler(channel.alloc(), connectionOption.getHost(), connectionOption.getPort()));
+                SslContext sslContext = SslContextBuilder.forClient().trustManager(tmf).startTls(false).build();
+                pipeline.addFirst(sslContext.newHandler(channel.alloc(), connectionOption.getHost(), connectionOption.getPort()));
+            } finally {
+                sslCert.close();
+            }
         }
         pipeline.addLast(new MqttDecoder());
         pipeline.addLast(MqttEncoder.INSTANCE);
