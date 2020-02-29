@@ -58,7 +58,7 @@ configurations {
 }
 
 dependencies {
-    implementation 'io.rapidw.mqtt:rapidw-mqtt-codec:0.0.1'
+    implementation 'io.rapidw.mqtt:rapidw-mqtt-codec:0.0.3'
     implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation 'io.netty:netty-handler:4.1.45.Final'
 
