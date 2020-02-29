@@ -68,7 +68,23 @@ public class MqttConnection {
         handler.subscribe(topicAndQosLevels, mqttMessageHandler, subscribeResultHandler);
     }
 
-    public void publish(String topic, MqttQosLevel qos, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
+    public void publishQos0Message(String topic, boolean retain, byte[] payload) {
+        publishQos0Message(topic, retain, payload, null);
+    }
+
+    public void publishQos0Message(String topic, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
+        publish(topic, MqttQosLevel.AT_MOST_ONCE, retain, payload, publishResultHandler);
+    }
+
+    public void publishQos1Message(String topic, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
+        publish(topic, MqttQosLevel.AT_LEAST_ONCE, retain, payload, publishResultHandler);
+    }
+
+    public void publishQos2Message(String topic, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
+        publish(topic, MqttQosLevel.EXACTLY_ONCE, retain, payload, publishResultHandler);
+    }
+
+    private void publish(String topic, MqttQosLevel qos, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
         if (status != Status.CONNECTED) {
             publishResultHandler.onError(new MqttClientException("invalid connection status: " + status.name()));
         }
@@ -382,10 +398,12 @@ public class MqttConnection {
                 .payload(payload)
                 .build()
             ).addListener(future -> {
-                if (future.isSuccess()) {
-                    mqttPublishResultHandler.onSuccess();
-                } else {
-                    mqttPublishResultHandler.onError(future.cause());
+                if (mqttPublishResultHandler != null) {
+                    if (future.isSuccess()) {
+                        mqttPublishResultHandler.onSuccess();
+                    } else {
+                        mqttPublishResultHandler.onError(future.cause());
+                    }
                 }
             });
         }

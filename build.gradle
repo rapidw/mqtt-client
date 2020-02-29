@@ -11,6 +11,8 @@ plugins {
     id "com.github.spotbugs" version "3.0.0"
 }
 
+import org.gradle.api.publish.maven.internal.artifact.FileBasedMavenArtifact
+
 group = 'io.rapidw.mqtt'
 description = "Rapidw MQTT client"
 
@@ -175,16 +177,34 @@ bintray {
                 passphrase = getProp("signing.password")
             }
 
-//            mavenCentralSync {
-//                sync = true
-//                user = getProp("nexusUsername")
-//                password = getProp("nexusPassword")
-//                close = '1'
-//            }
+            mavenCentralSync {
+                sync = true
+                user = getProp("nexusUsername")
+                password = getProp("nexusPassword")
+                close = '1'
+            }
         }
     }
 
     publications = ["mavenJava"]
+}
+
+project.tasks.withType(com.jfrog.bintray.gradle.tasks.BintrayUploadTask) {
+    doFirst {
+        publishing.publications.withType(MavenPublication).each { publication ->
+            File moduleFile = project.buildDir.toPath()
+                .resolve("publications/${publication.name}/module.json").toFile()
+
+            if (moduleFile.exists()) {
+                publication.artifact(new FileBasedMavenArtifact(moduleFile) {
+                    @Override
+                    protected String getDefaultExtension() {
+                        return "module"
+                    }
+                })
+            }
+        }
+    }
 }
 
 tasks.withType(com.github.spotbugs.SpotBugsTask) {

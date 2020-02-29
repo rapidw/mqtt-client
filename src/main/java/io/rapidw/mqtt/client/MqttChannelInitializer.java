@@ -1,20 +1,16 @@
 package io.rapidw.mqtt.client;
 
-import ch.qos.logback.core.net.ssl.SSLContextFactoryBean;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.SslProvider;
 import io.rapidw.mqtt.codec.MqttDecoder;
 import io.rapidw.mqtt.codec.MqttEncoder;
 import lombok.extern.slf4j.Slf4j;
 
-import javax.net.ssl.*;
-import java.io.ByteArrayInputStream;
+import javax.net.ssl.TrustManagerFactory;
 import java.security.KeyStore;
-import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 
