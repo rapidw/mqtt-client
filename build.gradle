@@ -104,6 +104,8 @@ task integrationTest(type: Test) {
     shouldRunAfter test
 }
 
+
+
 task sourcesJar(type: Jar) {
     from sourceSets.main.delombokTask
     archiveClassifier.set 'sources'
@@ -147,6 +149,13 @@ publishing {
                 }
             }
         }
+    }
+}
+
+jar {
+    into("META-INF/maven/$project.group/$project.name") {
+        from generatePomFileForMavenJavaPublication
+        rename ".*", "pom.xml"
     }
 }
 
