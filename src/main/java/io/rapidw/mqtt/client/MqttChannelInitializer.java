@@ -28,7 +28,6 @@ class MqttChannelInitializer extends ChannelInitializer<NioSocketChannel> {
 
     @Override
     protected void initChannel(NioSocketChannel channel) throws Exception {
-        log.info("cert: {}", connectionOption.getSslCertificate());
         ChannelPipeline pipeline = channel.pipeline();
         val sslCertificateBytes = connectionOption.getSslCertificate();
         if (sslCertificateBytes != null) {
