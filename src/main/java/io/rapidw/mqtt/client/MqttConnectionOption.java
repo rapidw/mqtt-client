@@ -6,8 +6,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NonNull;
 
-import java.io.InputStream;
-
 @Getter
 @Builder
 public class MqttConnectionOption {
@@ -23,7 +21,8 @@ public class MqttConnectionOption {
     @NonNull
     private String clientId;
 
-    private byte[] sslCertificate;
+    private byte[] serverCertificate;
+    private byte[] clientCertificate;
     private int tcpConnectTimeout;
     private int mqttConnectTimeout;
 

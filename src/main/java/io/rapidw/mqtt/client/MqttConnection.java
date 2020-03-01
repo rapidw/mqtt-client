@@ -263,7 +263,7 @@ public class MqttConnection {
         @Override
         public void channelActive(ChannelHandlerContext ctx) {
             log.debug("channel active");
-            if (connectionOption.getSslCertificate() == null) {
+            if (connectionOption.getServerCertificate() == null) {
                 log.debug("raw socket");
                 doConnect(ctx);
             }
