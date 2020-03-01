@@ -23,7 +23,7 @@ public class MqttConnectionOption {
     @NonNull
     private String clientId;
 
-    private InputStream sslCertificate;
+    private byte[] sslCertificate;
     private int tcpConnectTimeout;
     private int mqttConnectTimeout;
 

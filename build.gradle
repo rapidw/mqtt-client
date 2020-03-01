@@ -52,7 +52,7 @@ configurations {
 }
 
 dependencies {
-    implementation 'io.rapidw.mqtt:rapidw-mqtt-codec:latest.release'
+    implementation 'io.rapidw.mqtt:rapidw-mqtt-codec:0.0.5'
     implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation 'io.netty:netty-handler:4.1.45.Final'
 
@@ -65,6 +65,7 @@ dependencies {
     intTestImplementation 'ch.qos.logback:logback-classic:1.2.3'
     intTestImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     intTestRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.6.0"
+    intTestImplementation "commons-io:commons-io:latest.release"
 }
 
 tasks.withType(JavaCompile) {
@@ -145,6 +146,7 @@ publishing {
     }
 }
 
+// include pom in jar
 jar {
     into("META-INF/maven/$project.group/$project.name") {
         from generatePomFileForMavenJavaPublication
@@ -191,6 +193,7 @@ bintray {
     publications = ["mavenJava"]
 }
 
+// workaround for upload gradle module metadata to bintray
 project.tasks.withType(com.jfrog.bintray.gradle.tasks.BintrayUploadTask) {
     doFirst {
         publishing.publications.withType(MavenPublication).each { publication ->

@@ -275,7 +275,6 @@ public class MqttConnection {
             if (cause instanceof ReadTimeoutException && status == Status.CONNECTING) {
                 mqttConnectResultHandler.onTimeout();
             } else if (cause instanceof DecoderException) {
-                log.error("decoder exception", cause);
                 throwException(new MqttClientException("decoder exception", cause));
             } else {
                 super.exceptionCaught(ctx, cause);
@@ -350,7 +349,6 @@ public class MqttConnection {
                     tcpMqttConnectResultHandler.onSuccess();
                 } else {
                     val cause = future.cause();
-                    log.debug("tcp connect error", cause);
                     if (cause instanceof ConnectTimeoutException) {
                         tcpMqttConnectResultHandler.onTimeout();
                     } else {
