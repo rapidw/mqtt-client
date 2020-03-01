@@ -34,13 +34,7 @@ ext {
     vcsUrl = "${url}.git"
 }
 
-
 repositories {
-    mavenLocal()
-    maven {
-        url 'https://maven.aliyun.com/repository/public/'
-        allowInsecureProtocol true
-    }
     jcenter()
     mavenCentral()
 }
@@ -58,7 +52,7 @@ configurations {
 }
 
 dependencies {
-    implementation 'io.rapidw.mqtt:rapidw-mqtt-codec:0.0.3'
+    implementation 'io.rapidw.mqtt:rapidw-mqtt-codec:latest.release'
     implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation 'io.netty:netty-handler:4.1.45.Final'
 
@@ -123,7 +117,7 @@ publishing {
             artifact javadocJar
 
             pom {
-                name = "$group:$name"
+                name = "$group:${project.name}"
                 description = project.description
                 url = project.url
 
