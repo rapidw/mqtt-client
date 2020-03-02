@@ -1,28 +1,40 @@
-package io.rapidw.mqtt.client;
+/*
+ * Copyright 2020 Rapidw
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package io.rapidw.mqtt.client.v3_1_1;
 
-import io.rapidw.mqtt.client.handler.MqttMessageHandler;
-import io.rapidw.mqtt.codec.MqttQosLevel;
-import io.rapidw.mqtt.codec.MqttTopicAndQosLevel;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
-import lombok.val;
-import lombok.var;
+import io.rapidw.mqtt.client.v3_1_1.handler.MqttMessageHandler;
+import io.rapidw.mqtt.codec.v3_1_1.MqttV311QosLevel;
+import io.rapidw.mqtt.codec.v3_1_1.MqttV311TopicAndQosLevel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-@Slf4j
 class MqttTopicTree {
+    private static Logger log = LoggerFactory.getLogger(MqttTopicTree.class);
 
     private TopicNode root = TopicNode.newRootNode();
 
-    public synchronized void addSubscription(MqttTopicAndQosLevel topicAndQosLevel, MqttMessageHandler messageHandler) {
+    public synchronized void addSubscription(MqttV311TopicAndQosLevel topicAndQosLevel, MqttMessageHandler messageHandler) {
         TopicNode currentNode = root;
         log.debug("add sub parts: {}", splitTopic(topicAndQosLevel.getTopicFilter()));
-        val parts = splitTopic(topicAndQosLevel.getTopicFilter());
-        val size = parts.size();
+        List<String> parts = splitTopic(topicAndQosLevel.getTopicFilter());
+        int size = parts.size();
         for (int i = 0; i < size; i++) {
-            val level = parts.get(i);
+            String level = parts.get(i);
             if (i == (size - 1)) {
                 currentNode.addChild(level, topicAndQosLevel.getQosLevel(), messageHandler);
             } else {
@@ -32,7 +44,7 @@ class MqttTopicTree {
     }
 
     public Set<MqttMessageHandler> getHandlersByTopicName(String topicName) {
-        val nodes = new LinkedList<TopicNode>();
+        List<TopicNode> nodes = new LinkedList<>();
         TopicNode currentNode = root;
         TopicNode nextNode;
         for (String level : splitTopic(topicName)) {
@@ -55,14 +67,14 @@ class MqttTopicTree {
             nodes.add(currentNode);
         }
 
-        val qos0Handlers = new HashSet<MqttMessageHandler>();
-        val qos1Handlers = new HashSet<MqttMessageHandler>();
-        val qos2Handlers = new HashSet<MqttMessageHandler>();
+        Set<MqttMessageHandler> qos0Handlers = new HashSet<>();
+        Set<MqttMessageHandler> qos1Handlers = new HashSet<>();
+        Set<MqttMessageHandler> qos2Handlers = new HashSet<>();
 
-        var hasQos2 = false;
-        var hasQos1 = false;
+        boolean hasQos2 = false;
+        boolean hasQos1 = false;
 
-        for (val node : nodes) {
+        for (TopicNode node : nodes) {
             if (node.qos2Handlers.size() != 0) {
                 qos2Handlers.addAll(node.qos2Handlers);
                 hasQos2 = true;
@@ -107,31 +119,27 @@ class MqttTopicTree {
 
     public static class TopicNode {
 
-        @Getter(AccessLevel.PACKAGE)
         private Set<MqttMessageHandler> qos0Handlers;
-        @Getter(AccessLevel.PACKAGE)
         private Set<MqttMessageHandler> qos1Handlers;
-        @Getter(AccessLevel.PACKAGE)
         private Set<MqttMessageHandler> qos2Handlers;
-        @Getter
         private Map<String, TopicNode> children = new HashMap<>();
 
         static TopicNode newRootNode() {
             return new TopicNode();
         }
 
-        public TopicNode addChild(String name, MqttQosLevel qosLevel, MqttMessageHandler handler) {
+        public TopicNode addChild(String name, MqttV311QosLevel qosLevel, MqttMessageHandler handler) {
 
-            val child = children.get(name);
+            TopicNode child = children.get(name);
             if (child != null) {
                 if (qosLevel != null) {
-                    if (qosLevel == MqttQosLevel.EXACTLY_ONCE && !child.getQos2Handlers().contains(handler)) {
+                    if (qosLevel == MqttV311QosLevel.EXACTLY_ONCE && !child.getQos2Handlers().contains(handler)) {
                         child.getQos2Handlers().add(handler);
-                    } else if (qosLevel == MqttQosLevel.AT_LEAST_ONCE
+                    } else if (qosLevel == MqttV311QosLevel.AT_LEAST_ONCE
                         && child.getQos2Handlers().isEmpty()
                         && !child.getQos1Handlers().contains(handler)) {
                         child.getQos1Handlers().add(handler);
-                    } else if (qosLevel == MqttQosLevel.AT_MOST_ONCE
+                    } else if (qosLevel == MqttV311QosLevel.AT_MOST_ONCE
                         && child.getQos2Handlers().isEmpty()
                         && child.getQos1Handlers().isEmpty()
                         && child.getQos0Handlers().contains(handler)) {
@@ -164,6 +172,22 @@ class MqttTopicTree {
 
         public TopicNode getChild(String name) {
             return children.get(name);
+        }
+
+        Set<MqttMessageHandler> getQos0Handlers() {
+            return this.qos0Handlers;
+        }
+
+        Set<MqttMessageHandler> getQos1Handlers() {
+            return this.qos1Handlers;
+        }
+
+        Set<MqttMessageHandler> getQos2Handlers() {
+            return this.qos2Handlers;
+        }
+
+        public Map<String, TopicNode> getChildren() {
+            return this.children;
         }
     }
 }

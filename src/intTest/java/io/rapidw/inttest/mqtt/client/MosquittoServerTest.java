@@ -1,16 +1,30 @@
+/*
+ * Copyright 2020 Rapidw
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.rapidw.inttest.mqtt.client;
 
-import io.rapidw.mqtt.client.MqttClient;
-import io.rapidw.mqtt.client.MqttConnection;
-import io.rapidw.mqtt.client.MqttConnectionOption;
-import io.rapidw.mqtt.client.MqttSubscription;
-import io.rapidw.mqtt.client.handler.MqttConnectResultHandler;
-import io.rapidw.mqtt.client.handler.MqttMessageHandler;
-import io.rapidw.mqtt.client.handler.MqttSubscribeResultHandler;
-import io.rapidw.mqtt.client.handler.TcpConnectResultHandler;
-import io.rapidw.mqtt.codec.MqttQosLevel;
-import io.rapidw.mqtt.codec.MqttTopicAndQosLevel;
-import lombok.SneakyThrows;
+import io.rapidw.mqtt.client.v3_1_1.MqttClient;
+import io.rapidw.mqtt.client.v3_1_1.MqttConnection;
+import io.rapidw.mqtt.client.v3_1_1.MqttConnectionOption;
+import io.rapidw.mqtt.client.v3_1_1.MqttSubscription;
+import io.rapidw.mqtt.client.v3_1_1.handler.MqttConnectResultHandler;
+import io.rapidw.mqtt.client.v3_1_1.handler.MqttMessageHandler;
+import io.rapidw.mqtt.client.v3_1_1.handler.MqttSubscribeResultHandler;
+import io.rapidw.mqtt.client.v3_1_1.handler.TcpConnectResultHandler;
+import io.rapidw.mqtt.codec.v3_1_1.MqttV311QosLevel;
+import io.rapidw.mqtt.codec.v3_1_1.MqttV311TopicAndQosLevel;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 
@@ -21,7 +35,6 @@ import java.util.List;
 public class MosquittoServerTest {
 
     @Test
-    @SneakyThrows
     public void testMqsquittoServer() {
         MqttConnectionOption connectionOption = MqttConnectionOption.builder()
             .cleanSession(true)
@@ -66,7 +79,7 @@ public class MosquittoServerTest {
             @Override
             public void onSuccess() {
                 log.info("mqtt connect success");
-                connection.subscribe(Collections.singletonList(new MqttTopicAndQosLevel("#", MqttQosLevel.AT_MOST_ONCE)), mqttMessageHandler, new MqttSubscribeResultHandler() {
+                connection.subscribe(Collections.singletonList(new MqttV311TopicAndQosLevel("#", MqttV311QosLevel.AT_MOST_ONCE)), mqttMessageHandler, new MqttSubscribeResultHandler() {
                     @Override
                     public void onSuccess(List<MqttSubscription> subscriptions) {
                         log.info("mqtt subscribe success");

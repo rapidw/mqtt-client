@@ -1,6 +1,5 @@
 plugins {
     id 'java-library'
-    id 'io.freefair.lombok' version '5.0.0-rc4'
     id 'maven-publish'
     id 'jacoco'
     id "me.champeau.gradle.jmh" version "0.5.0"
@@ -8,7 +7,7 @@ plugins {
     id 'se.patrikerdes.use-latest-versions' version '0.2.13'
     id 'com.github.ben-manes.versions' version '0.28.0'
     id "com.jfrog.bintray" version "1.8.4"
-    id "com.github.spotbugs" version "3.0.0"
+    id "com.github.hierynomus.license" version "0.15.0"
 }
 
 import org.gradle.api.publish.maven.internal.artifact.FileBasedMavenArtifact
@@ -37,6 +36,10 @@ ext {
 repositories {
     jcenter()
     mavenCentral()
+    maven {
+        url "http://oss.jfrog.org/artifactory/simple/libs-snapshot/"
+        allowInsecureProtocol true
+    }
 }
 
 sourceSets {
@@ -52,7 +55,7 @@ configurations {
 }
 
 dependencies {
-    api 'io.rapidw.mqtt:rapidw-mqtt-codec:0.0.5'
+    api 'io.rapidw.mqtt:rapidw-mqtt-codec:latest.integration'
     implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation 'io.netty:netty-handler:4.1.45.Final'
 
@@ -66,6 +69,12 @@ dependencies {
     intTestImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     intTestRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.6.0"
     intTestImplementation "commons-io:commons-io:2.6"
+    intTestCompileOnly 'org.projectlombok:lombok:1.18.12'
+    intTestAnnotationProcessor 'org.projectlombok:lombok:1.18.12'
+}
+
+license {
+    header project.file("gradle/license-header")
 }
 
 tasks.withType(JavaCompile) {
@@ -76,7 +85,6 @@ tasks.withType(JavaCompile) {
 }
 
 javadoc {
-    source = sourceSets.main.delombokTask
     options {
         encoding = 'UTF-8'
         locale 'en_US'
@@ -100,15 +108,9 @@ task integrationTest(type: Test) {
     classpath = sourceSets.intTest.runtimeClasspath
     shouldRunAfter test
 }
-
-task sourcesJar(type: Jar) {
-    from sourceSets.main.delombokTask
-    archiveClassifier.set 'sources'
-}
-
-task javadocJar(type: Jar) {
-    from javadoc.destinationDir
-    archiveClassifier.set 'javadoc'
+java {
+    withJavadocJar()
+    withSourcesJar()
 }
 
 publishing {
@@ -213,30 +215,4 @@ project.tasks.withType(com.jfrog.bintray.gradle.tasks.BintrayUploadTask) {
     }
 }
 
-tasks.withType(com.github.spotbugs.SpotBugsTask) {
-    reports.xml.enabled = false
-    reports.html.enabled = true
-    ignoreFailures = true
-}
-
 afterReleaseBuild.dependsOn bintrayUpload
-
-task setCompiler {
-
-    doLast {
-        tasks.findByName("compileJava").configure {
-            source = sourceSets.main.delombokTask
-        }
-        tasks.findByName("compileTestJava").configure {
-            source = sourceSets.test.delombokTask
-        }
-        tasks.findByName("compileJmhJava").configure {
-            source = sourceSets.jmh.delombokTask
-        }
-        tasks.findByName("compileIntTestJava").configure {
-            source = sourceSets.intTest.delombokTask
-        }
-    }
-}
-publishToMavenLocal.dependsOn setCompiler
-compileJava.mustRunAfter setCompiler
