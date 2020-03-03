@@ -118,8 +118,6 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            artifact sourcesJar
-            artifact javadocJar
 
             pom {
                 name = "$group:${project.name}"
