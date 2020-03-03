@@ -189,12 +189,14 @@ public class MqttConnection {
         private void handlePublish(MqttV311PublishPacket packet) {
             boolean hasHandler = false;
             Set<MqttMessageHandler> handlers = subscriptionTree.getHandlersByTopicName(packet.getTopic());
+            if (handlers.size() == 0) {
+                throwException(new MqttClientException("PUBLISH packet without message handler received, topic: " + packet.getTopic()));
+            }
             for (MqttMessageHandler handler: handlers) {
-                hasHandler = true;
                 handler.onMessage(packet.getTopic(), packet.getQosLevel(), packet.isRetain(), packet.isDupFlag(), packet.getPacketId(), packet.getPayload());
             }
-            if (!hasHandler) {
-                throwException(new MqttClientException("PUBLISH packet without message handler received, topic: " + packet.getTopic()));
+            if (packet.getQosLevel() == MqttV311QosLevel.AT_LEAST_ONCE) {
+                pubAck(packet.getPacketId());
             }
         }
 
@@ -492,6 +494,15 @@ public class MqttConnection {
                     pendingUnsubscriptions.put(packetId, new MqttPendingUnsubscription(topicFilters, unsubscribeResultHandler));
                 } else {
                     unsubscribeResultHandler.onError(future.cause());
+                }
+            });
+        }
+
+        public void pubAck(int packetId) {
+            MqttV311PubAckPacket packet = MqttV311PubAckPacket.builder().packetId(packetId).build();
+            channel.writeAndFlush(packet).addListener( future -> {
+                if (!future.isSuccess()) {
+                    throwException(future.cause());
                 }
             });
         }
