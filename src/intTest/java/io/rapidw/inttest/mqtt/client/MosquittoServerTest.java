@@ -15,7 +15,7 @@
  */
 package io.rapidw.inttest.mqtt.client;
 
-import io.rapidw.mqtt.client.v3_1_1.MqttClient;
+import io.rapidw.mqtt.client.v3_1_1.MqttV311Client;
 import io.rapidw.mqtt.client.v3_1_1.MqttConnection;
 import io.rapidw.mqtt.client.v3_1_1.MqttConnectionOption;
 import io.rapidw.mqtt.client.v3_1_1.MqttSubscription;
@@ -47,8 +47,8 @@ public class MosquittoServerTest {
             .mqttConnectTimeout(2000)
             .exceptionHandler(cause -> log.error("error", cause))
             .build();
-        MqttClient mqttClient = new MqttClient();
-        MqttConnection connection = mqttClient.newConnection(connectionOption);
+        MqttV311Client mqttV311Client = new MqttV311Client();
+        MqttConnection connection = mqttV311Client.newConnection(connectionOption);
 
         MqttMessageHandler mqttMessageHandler = (topic, qos, retain, dupFlag, packetId, payload) -> {
             log.info("topic: {}", topic);

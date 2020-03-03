@@ -22,13 +22,12 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 
-public class MqttClient {
+public class MqttV311Client {
     private EventLoopGroup eventLoopGroup;
 
-    public MqttClient() {
+    public MqttV311Client() {
          eventLoopGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors() * 2,
             new DefaultThreadFactory(MqttClientConstants.ThreadNamePrefix, true));
-
     }
 
     public MqttConnection newConnection(MqttConnectionOption connectionOption) {
