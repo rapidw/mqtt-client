@@ -17,15 +17,21 @@ package io.rapidw.mqtt.client.v3_1_1;
 
 import io.rapidw.mqtt.codec.v3_1_1.MqttV311ConnectReturnCode;
 
-
+/**
+ * exception contains a MQTT connect return code, only will be threw during establishing MQTT connection
+ */
 public class MqttConnectionException extends MqttClientException {
 
     private MqttV311ConnectReturnCode connectReturnCode;
 
-    public MqttConnectionException(MqttV311ConnectReturnCode connectReturnCode) {
+    MqttConnectionException(MqttV311ConnectReturnCode connectReturnCode) {
         super("connect failed, return code is " + connectReturnCode.name());
     }
 
+    /**
+     * get MQTT connect return code
+     * @return connect return code
+     */
     public MqttV311ConnectReturnCode getConnectReturnCode() {
         return connectReturnCode;
     }

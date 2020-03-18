@@ -17,7 +17,19 @@ package io.rapidw.mqtt.client.v3_1_1.handler;
 
 
 public interface MqttConnectResultHandler {
+    /**
+     * will be called when MQTT connection successfully established
+     */
     void onSuccess();
+
+    /**
+     * will be called when error occurred during establishing MQTT connection
+     * @param cause cause
+     */
     void onError(Throwable cause);
+
+    /**
+     * will be called when establishing MQTT connection timeout
+     */
     void onTimeout();
 }

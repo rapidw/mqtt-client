@@ -188,11 +188,21 @@ public class MqttConnectionOption {
             return this;
         }
 
+        /**
+         * certificate for verifying server
+         * @param serverCertificate X.509 certificate in PEM format
+         * @return this
+         */
         public MqttConnectionOption.MqttConnectionOptionBuilder serverCertificate(byte[] serverCertificate) {
             this.serverCertificate = serverCertificate;
             return this;
         }
 
+        /**
+         * certificate for verifying client
+         * @param clientCertificate X.509 certificate in PEM format
+         * @return this
+         */
         public MqttConnectionOption.MqttConnectionOptionBuilder clientCertificate(byte[] clientCertificate) {
             this.clientCertificate = clientCertificate;
             return this;
@@ -208,6 +218,11 @@ public class MqttConnectionOption {
             return this;
         }
 
+        /**
+         * set global exception handler. When error occurred, if no handler available, global exception handler will be called
+         * @param exceptionHandler
+         * @return
+         */
         public MqttConnectionOption.MqttConnectionOptionBuilder exceptionHandler(MqttExceptionHandler exceptionHandler) {
             this.exceptionHandler = Objects.requireNonNull(exceptionHandler);
             return this;

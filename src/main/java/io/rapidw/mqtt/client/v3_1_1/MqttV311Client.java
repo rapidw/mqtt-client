@@ -22,14 +22,26 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.util.concurrent.DefaultThreadFactory;
 
+/**
+ * MQTT client fully complaints MQTT 3.1.1 specification. Thread safe, should be a singleton.
+ */
 public class MqttV311Client {
     private EventLoopGroup eventLoopGroup;
 
+    /**
+     * constructs a new client
+     */
     public MqttV311Client() {
          eventLoopGroup = new NioEventLoopGroup(Runtime.getRuntime().availableProcessors() * 2,
             new DefaultThreadFactory(MqttClientConstants.ThreadNamePrefix, true));
     }
 
+    /**
+     * create a new connection
+     *
+     * @param connectionOption connection options
+     * @return created connection, not connected
+     */
     public MqttConnection newConnection(MqttConnectionOption connectionOption) {
         Bootstrap bootstrap = new Bootstrap().group(eventLoopGroup).channel(NioSocketChannel.class)
             .option(ChannelOption.SO_REUSEADDR, true)

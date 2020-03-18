@@ -38,6 +38,10 @@ public class MqttSubscription {
     }
 
 
+    /**
+     * unsubscribe this subscription
+     * @param unsubscribeResultHandler handler for unsubscription result
+     */
     public void unsubscribe(MqttUnsubscribeResultHandler unsubscribeResultHandler) {
         connection.unsubscribe(this, unsubscribeResultHandler);
     }

@@ -15,6 +15,9 @@
  */
 package io.rapidw.mqtt.client.v3_1_1;
 
+/**
+ * general exception for this client
+ */
 public class MqttClientException extends RuntimeException {
 
     public MqttClientException(String message) {

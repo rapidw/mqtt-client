@@ -18,7 +18,7 @@ package io.rapidw.mqtt.client.v3_1_1;
 import io.rapidw.mqtt.client.v3_1_1.handler.MqttPublishResultHandler;
 import io.rapidw.mqtt.codec.v3_1_1.MqttV311PublishPacket;
 
-public class MqttPendingMessage {
+class MqttPendingMessage {
     private MqttV311PublishPacket packet;
     private MqttPublishResultHandler publishResultHandler;
 

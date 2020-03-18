@@ -56,16 +56,21 @@ public class MqttConnection {
     private AtomicInteger currentPacketId = new AtomicInteger();
     private Promise<Void> closePromise;
 
-    public MqttConnection(Bootstrap bootstrap, MqttConnectionOption connectionOption) {
+    MqttConnection(Bootstrap bootstrap, MqttConnectionOption connectionOption) {
         this.connectionOption = connectionOption;
         this.bootstrap = bootstrap;
     }
 
-    public Handler handler() {
+    Handler handler() {
         handler = new Handler();
         return handler;
     }
 
+    /**
+     * establish connection
+     * @param tcpConnectResultHandler handler for result of TCP connecting
+     * @param mqttConnectResultHandler handler for result of MQTT connecting
+     */
     public void connect(TcpConnectResultHandler tcpConnectResultHandler, MqttConnectResultHandler mqttConnectResultHandler) {
         this.closePromise = this.bootstrap.config().group().next().newPromise();
         if (status != Status.NOT_CONNECTING) {
@@ -75,6 +80,12 @@ public class MqttConnection {
         handler.connect(tcpConnectResultHandler);
     }
 
+    /**
+     * subscribe new topic
+     * @param topicAndQosLevels topic and QoS level to subscribe
+     * @param mqttMessageHandler handler for new messages from subscribed topic
+     * @param subscribeResultHandler handler for subscription result
+     */
     public void subscribe(List<MqttV311TopicAndQosLevel> topicAndQosLevels, MqttMessageHandler mqttMessageHandler, MqttSubscribeResultHandler subscribeResultHandler) {
         if (status != Status.CONNECTED) {
             subscribeResultHandler.onError(new MqttClientException("invalid connection status: " + status.name()));
@@ -82,18 +93,45 @@ public class MqttConnection {
         handler.subscribe(topicAndQosLevels, mqttMessageHandler, subscribeResultHandler);
     }
 
+    /**
+     * publish message at QoS 0
+     * @param topic topic
+     * @param retain retain
+     * @param payload payload
+     */
     public void publishQos0Message(String topic, boolean retain, byte[] payload) {
         publish(topic, MqttV311QosLevel.AT_MOST_ONCE, retain, payload, null);
     }
 
+    /**
+     * publish message at QoS 0
+     * @param topic topic
+     * @param retain retain
+     * @param payload payload
+     * @param publishResultHandler handler for publish result
+     */
     public void publishQos0Message(String topic, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
         publish(topic, MqttV311QosLevel.AT_MOST_ONCE, retain, payload, Objects.requireNonNull(publishResultHandler));
     }
 
+    /**
+     * publish message at QoS 1
+     * @param topic topic
+     * @param retain retain
+     * @param payload payload
+     * @param publishResultHandler handler for publish result
+     */
     public void publishQos1Message(String topic, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
         publish(topic, MqttV311QosLevel.AT_LEAST_ONCE, retain, payload, Objects.requireNonNull(publishResultHandler));
     }
 
+    /**
+     * publish message at QoS 2, NOT supported now.
+     * @param topic topic
+     * @param retain retain
+     * @param payload payload
+     * @param publishResultHandler handler for publish result
+     */
     public void publishQos2Message(String topic, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
         publish(topic, MqttV311QosLevel.EXACTLY_ONCE, retain, payload, Objects.requireNonNull(publishResultHandler));
     }
@@ -105,18 +143,35 @@ public class MqttConnection {
         handler.publish(topic, qos, retain, payload, publishResultHandler);
     }
 
+    /**
+     * unsubscribe a list of subscriptions. No more message will be received if unsubscribe success.Notice: this method is not implemented
+     * by iteratively calling {@link #unsubscribe(MqttSubscription, MqttUnsubscribeResultHandler)}
+     * @param subscriptions a list of MQTT subscriptions. You can get one item from {@link MqttSubscribeResultHandler}.
+     * @param unsubscribeResultHandler handler for unsubscribe result
+     */
     public void unsubscribe(List<MqttSubscription> subscriptions, MqttUnsubscribeResultHandler unsubscribeResultHandler) {
         handler.unsubscribe(subscriptions, unsubscribeResultHandler);
     }
 
+    /**
+     * unsubscribe one subscription. No more message will be received if unsubscribe success.
+     * @param subscription MQTT subscription. You can get it from {@link MqttSubscribeResultHandler}.
+     * @param unsubscribeResultHandler handler for unsubscribe result
+     */
     void unsubscribe(MqttSubscription subscription, MqttUnsubscribeResultHandler unsubscribeResultHandler) {
         handler.unsubscribe(Collections.singletonList(subscription), unsubscribeResultHandler);
     }
 
+    /**
+     * close this connection
+     */
     public void close() {
         handler.close();
     }
 
+    /**
+     * block the current thread until connection closed
+     */
     public void waitForClose() {
         try {
             closePromise.await();

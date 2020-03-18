@@ -20,6 +20,15 @@ import io.rapidw.mqtt.client.v3_1_1.MqttSubscription;
 import java.util.List;
 
 public interface MqttSubscribeResultHandler {
+    /**
+     * will be called when a topic subscribed successfully
+     * @param subscriptions subscribed subscriptions
+     */
     void onSuccess(List<MqttSubscription> subscriptions);
+
+    /**
+     * will be called when error occurred during subscribing a topic
+     * @param cause cause
+     */
     void onError(Throwable cause);
 }

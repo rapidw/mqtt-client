@@ -20,8 +20,20 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public interface MqttMessageHandler {
+    /**
+     * will be called when new message from subscribed topic received
+     * @param topic topic
+     * @param qos QoS level
+     * @param retain retain
+     * @param dupFlag dup for Qos 1 or 2. For QoS 0, this parameter should be ignored
+     * @param packetId packetId for QoS 1 or 2. For QoS 0, this parameter should be ignored
+     * @param payload payload
+     */
     void onMessage(String topic, MqttV311QosLevel qos, boolean retain, boolean dupFlag, int packetId, byte[] payload);
 
+    /**
+     * do nothing when message received, just print log
+     */
     MqttMessageHandler NoOpHandler = new MqttMessageHandler() {
         Logger logger = LoggerFactory.getLogger(getClass());
         @Override
