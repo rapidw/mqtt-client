@@ -21,7 +21,7 @@ def String getProp(String name) {
     if (hasProperty(name)) {
         return properties[name]
     } else {
-        String env = System.getenv('some_prop')
+        String env = System.getenv(name)
         if (env != null) {
             return env
         } else {

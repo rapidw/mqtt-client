@@ -51,6 +51,9 @@ public class MqttConnectionOption {
         this.password = password;
         this.will = will;
         this.cleanSession = cleanSession;
+        if (keepAliveSeconds != 0 && keepAliveSeconds - keepAliveSecondsOffset <= 0) {
+            throw new MqttClientException("invalid keepAliveSeconds and keepAliveSecondsOffset");
+        }
         this.keepAliveSeconds = keepAliveSeconds;
         this.keepAliveSecondsOffset = keepAliveSecondsOffset;
         this.clientId = Objects.requireNonNull(clientId);
@@ -173,11 +176,21 @@ public class MqttConnectionOption {
             return this;
         }
 
+        /**
+         * set keepalive for this connection. Effective keepalive will be this minus ${@link #keepAliveSecondsOffset}
+         * @param keepAliveSeconds keepalive in CONNECT packet. 0 for close automatic heartbeat
+         * @return this
+         */
         public MqttConnectionOption.MqttConnectionOptionBuilder keepAliveSeconds(int keepAliveSeconds) {
             this.keepAliveSeconds = keepAliveSeconds;
             return this;
         }
 
+        /**
+         * set offset of keepalive. Effective keepalive will be ${@link #keepAliveSeconds} minus this
+         * @param keepAliveSecondsOffset offset of keepalive
+         * @return this
+         */
         public MqttConnectionOption.MqttConnectionOptionBuilder keepAliveSecondsOffset(int keepAliveSecondsOffset) {
             this.keepAliveSecondsOffset = keepAliveSecondsOffset;
             return this;
