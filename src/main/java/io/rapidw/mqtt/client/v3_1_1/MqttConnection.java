@@ -242,7 +242,9 @@ public class MqttConnection {
         }
 
         private void handlePublish(MqttV311PublishPacket packet) {
-            boolean hasHandler = false;
+            if (packet.getQosLevel() != MqttV311QosLevel.AT_MOST_ONCE) {
+                throw new UnsupportedOperationException("current only QoS 0 message supported");
+            }
             Set<MqttMessageHandler> handlers = subscriptionTree.getHandlersByTopicName(packet.getTopic());
             if (handlers.size() == 0) {
                 throwException(new MqttClientException("PUBLISH packet without message handler received, topic: " + packet.getTopic()));
