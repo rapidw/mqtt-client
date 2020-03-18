@@ -5,7 +5,8 @@
 [![Bintray](http://img.shields.io/bintray/v/rapidw/maven/rapidw-mqtt-client)](https://bintray.com/pvtyuan/maven/rapidw-mqtt-client/_latestVersion)
 [![License](https://img.shields.io/github/license/rapidw/mqtt-client)](https://github.com/rapidw/mqtt-client/blob/master/LICENSE)
 
-a fully asynchronous client for MQTT 3.1.1 based on [rapidw MQTT Codec](https://github.com/rapidw/mqtt-codec) 
+a fully asynchronous client for MQTT 3.1.1 based on [Rapidw MQTT Codec](https://github.com/rapidw/mqtt-codec) 
+
 ## Features
 - [x] SSL/TLS support
 - [x] CONNECT/CONACK
@@ -20,3 +21,4 @@ a fully asynchronous client for MQTT 3.1.1 based on [rapidw MQTT Codec](https://
     * [ ] QoS 2    
 - [x] automatic PINGREQ/PINGRESP
 - [x] DISCONNECT
+- [ ] Automatic Reconnect
