@@ -220,8 +220,8 @@ public class MqttConnectionOption {
 
         /**
          * set global exception handler. When error occurred, if no handler available, global exception handler will be called
-         * @param exceptionHandler
-         * @return
+         * @param exceptionHandler exception handler
+         * @return this
          */
         public MqttConnectionOption.MqttConnectionOptionBuilder exceptionHandler(MqttExceptionHandler exceptionHandler) {
             this.exceptionHandler = Objects.requireNonNull(exceptionHandler);
