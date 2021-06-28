@@ -45,49 +45,49 @@ public class MosquittoServerTest {
             .keepAliveSecondsOffset(2)
             .tcpConnectTimeout(1000)
             .mqttConnectTimeout(2000)
-            .exceptionHandler(cause -> log.error("error", cause))
+            .exceptionHandler((connection, e) -> log.error("error", e))
             .build();
         MqttV311Client mqttV311Client = new MqttV311Client();
         MqttConnection connection = mqttV311Client.newConnection(connectionOption);
 
-        MqttMessageHandler mqttMessageHandler = (topic, qos, retain, dupFlag, packetId, payload) -> {
+        MqttMessageHandler mqttMessageHandler = (connection1, topic, qos, retain, dupFlag, packetId, payload) -> {
             log.info("topic: {}", topic);
         };
 
 
         connection.connect(new TcpConnectResultHandler() {
             @Override
-            public void onSuccess() {
+            public void onSuccess(MqttConnection connection1) {
                 log.info("tcp connect success");
             }
 
             @Override
-            public void onError(Throwable throwable) {
+            public void onError(MqttConnection connection1, Throwable throwable) {
                 log.info("tcp connect error");
             }
 
             @Override
-            public void onTimeout() {
+            public void onTimeout(MqttConnection connection1) {
                 log.info("tcp connect timeout");
             }
         }, new MqttConnectResultHandler() {
             @Override
-            public void onError(Throwable cause) {
+            public void onError(MqttConnection connection1, Throwable cause) {
                 log.error("mqtt connect error", cause);
             }
 
             @Override
-            public void onSuccess() {
+            public void onSuccess(MqttConnection connection1) {
                 log.info("mqtt connect success");
                 connection.subscribe(Collections.singletonList(new MqttV311TopicAndQosLevel("#", MqttV311QosLevel.AT_MOST_ONCE)), mqttMessageHandler, new MqttSubscribeResultHandler() {
                     @Override
-                    public void onSuccess(List<MqttSubscription> subscriptions) {
+                    public void onSuccess(MqttConnection connection1, List<MqttSubscription> subscriptions) {
                         log.info("mqtt subscribe success");
 //                        connection.close();
                     }
 
                     @Override
-                    public void onError(Throwable cause) {
+                    public void onError(MqttConnection connection1, Throwable cause) {
                         log.info("onError", cause);
                     }
                 });
@@ -95,7 +95,7 @@ public class MosquittoServerTest {
             }
 
             @Override
-            public void onTimeout() {
+            public void onTimeout(MqttConnection connection1) {
                 log.info("mqtt connect timeout");
             }
         });

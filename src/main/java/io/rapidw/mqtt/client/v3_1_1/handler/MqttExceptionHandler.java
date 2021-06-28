@@ -15,6 +15,8 @@
  */
 package io.rapidw.mqtt.client.v3_1_1.handler;
 
+import io.rapidw.mqtt.client.v3_1_1.MqttConnection;
+
 public interface MqttExceptionHandler {
-    void onException(Throwable e);
+    void onException(MqttConnection connection, Throwable e);
 }

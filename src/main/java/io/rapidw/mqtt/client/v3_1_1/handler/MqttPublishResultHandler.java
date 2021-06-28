@@ -15,16 +15,18 @@
  */
 package io.rapidw.mqtt.client.v3_1_1.handler;
 
+import io.rapidw.mqtt.client.v3_1_1.MqttConnection;
+
 public interface MqttPublishResultHandler {
 
     /**
      * will be called when a message published successfully
      */
-    void onSuccess();
+    void onSuccess(MqttConnection connection);
 
     /**
      * will be called when error occurred during publishing a message
      * @param cause cause
      */
-    void onError(Throwable cause);
+    void onError(MqttConnection connection, Throwable cause);
 }

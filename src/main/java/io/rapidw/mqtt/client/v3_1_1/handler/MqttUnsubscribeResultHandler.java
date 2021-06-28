@@ -15,16 +15,18 @@
  */
 package io.rapidw.mqtt.client.v3_1_1.handler;
 
+import io.rapidw.mqtt.client.v3_1_1.MqttConnection;
+
 public interface MqttUnsubscribeResultHandler {
 
     /**
      * will be called when a subscription unsubscribed successfully
      */
-    void onSuccess();
+    void onSuccess(MqttConnection connection);
 
     /**
      * will be called when error occurred during unsubscribing a subscription
      * @param cause cause
      */
-    void onError(Throwable cause);
+    void onError(MqttConnection connection, Throwable cause);
 }

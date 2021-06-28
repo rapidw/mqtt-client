@@ -43,17 +43,17 @@ public class MqttConnection {
         CLOSED
     }
 
-    private MqttConnectionOption connectionOption;
-    private Bootstrap bootstrap;
+    private final MqttConnectionOption connectionOption;
+    private final Bootstrap bootstrap;
     private Status status = Status.NOT_CONNECTING;
     private Channel channel;
-    private IntObjectHashMap<MqttPendingSubscription> pendingSubscriptions = new IntObjectHashMap<>();
-    private IntObjectHashMap<MqttPendingUnsubscription> pendingUnsubscriptions = new IntObjectHashMap<>();
-    private LinkedHashMap<Integer, MqttPendingMessage> pendingMessages = new LinkedHashMap<>();
-    private MqttTopicTree subscriptionTree = new MqttTopicTree();
+    private final IntObjectHashMap<MqttPendingSubscription> pendingSubscriptions = new IntObjectHashMap<>();
+    private final IntObjectHashMap<MqttPendingUnsubscription> pendingUnsubscriptions = new IntObjectHashMap<>();
+    private final LinkedHashMap<Integer, MqttPendingMessage> pendingMessages = new LinkedHashMap<>();
+    private final MqttTopicTree subscriptionTree = new MqttTopicTree();
     private Handler handler;
     private MqttConnectResultHandler mqttConnectResultHandler;
-    private AtomicInteger currentPacketId = new AtomicInteger();
+    private final AtomicInteger currentPacketId = new AtomicInteger();
     private Promise<Void> closePromise;
 
     MqttConnection(Bootstrap bootstrap, MqttConnectionOption connectionOption) {
@@ -74,7 +74,7 @@ public class MqttConnection {
     public void connect(TcpConnectResultHandler tcpConnectResultHandler, MqttConnectResultHandler mqttConnectResultHandler) {
         this.closePromise = this.bootstrap.config().group().next().newPromise();
         if (status != Status.NOT_CONNECTING) {
-            mqttConnectResultHandler.onError(new MqttClientException("invalid connection status: " + status.name()));
+            mqttConnectResultHandler.onError(this, new MqttClientException("invalid connection status: " + status.name()));
         }
         this.mqttConnectResultHandler = mqttConnectResultHandler;
         handler.connect(tcpConnectResultHandler);
@@ -88,7 +88,7 @@ public class MqttConnection {
      */
     public void subscribe(List<MqttV311TopicAndQosLevel> topicAndQosLevels, MqttMessageHandler mqttMessageHandler, MqttSubscribeResultHandler subscribeResultHandler) {
         if (status != Status.CONNECTED) {
-            subscribeResultHandler.onError(new MqttClientException("invalid connection status: " + status.name()));
+            subscribeResultHandler.onError(this, new MqttClientException("invalid connection status: " + status.name()));
         }
         handler.subscribe(topicAndQosLevels, mqttMessageHandler, subscribeResultHandler);
     }
@@ -138,7 +138,7 @@ public class MqttConnection {
 
     private void publish(String topic, MqttV311QosLevel qos, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
         if (status != Status.CONNECTED) {
-            publishResultHandler.onError(new MqttClientException("invalid connection status: " + status.name()));
+            publishResultHandler.onError(this, new MqttClientException("invalid connection status: " + status.name()));
         }
         handler.publish(topic, qos, retain, payload, publishResultHandler);
     }
@@ -176,7 +176,7 @@ public class MqttConnection {
         try {
             closePromise.await();
         } catch (InterruptedException e) {
-            connectionOption.getExceptionHandler().onException(e);
+            connectionOption.getExceptionHandler().onException(this, e);
         }
     }
 
@@ -235,7 +235,7 @@ public class MqttConnection {
 
             MqttPendingMessage pending = pendingMessages.remove(curr);
             if (pending != null) {
-                pending.getPublishResultHandler().onSuccess();
+                pending.getPublishResultHandler().onSuccess(MqttConnection.this);
             } else {
                 throwException(new MqttClientException("invalid packetId in PUBACK packet, pending message not found"));
             }
@@ -250,7 +250,7 @@ public class MqttConnection {
                 throwException(new MqttClientException("PUBLISH packet without message handler received, topic: " + packet.getTopic()));
             }
             for (MqttMessageHandler handler: handlers) {
-                handler.onMessage(packet.getTopic(), packet.getQosLevel(), packet.isRetain(), packet.isDupFlag(), packet.getPacketId(), packet.getPayload());
+                handler.onMessage(MqttConnection.this, packet.getTopic(), packet.getQosLevel(), packet.isRetain(), packet.isDupFlag(), packet.getPacketId(), packet.getPayload());
             }
             if (packet.getQosLevel() == MqttV311QosLevel.AT_LEAST_ONCE) {
                 pubAck(packet.getPacketId());
@@ -292,7 +292,7 @@ public class MqttConnection {
                     );
                 }
 
-                pending.getMqttSubscribeResultHandler().onSuccess(subscriptionList);
+                pending.getMqttSubscribeResultHandler().onSuccess(MqttConnection.this, subscriptionList);
             } else {
                 throwException(new MqttClientException("invalid packetId in SUBACK packet, pending subscription not found"));
             }
@@ -310,10 +310,10 @@ public class MqttConnection {
                             0));
                 }
                 status = Status.CONNECTED;
-                mqttConnectResultHandler.onSuccess();
+                mqttConnectResultHandler.onSuccess(MqttConnection.this);
             } else {
                 channel.close();
-                mqttConnectResultHandler.onError(new MqttConnectionException(packet.getConnectReturnCode()));
+                mqttConnectResultHandler.onError(MqttConnection.this, new MqttConnectionException(packet.getConnectReturnCode()));
             }
         }
 
@@ -338,7 +338,7 @@ public class MqttConnection {
                 for (String topicFilter: pending.getTopicFilters()) {
                     subscriptionTree.removeSubscription(topicFilter);
                 }
-                pending.getUnsubscribeResultHandler().onSuccess();
+                pending.getUnsubscribeResultHandler().onSuccess(MqttConnection.this);
             } else {
                 throwException(new MqttClientException("invalid packetId in UNSUBACK packet, pending unsubscription not found"));
             }
@@ -359,7 +359,7 @@ public class MqttConnection {
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
             log.debug("error", cause);
             if (cause instanceof ReadTimeoutException && status == Status.CONNECTING) {
-                mqttConnectResultHandler.onTimeout();
+                mqttConnectResultHandler.onTimeout(MqttConnection.this);
             } else if (cause instanceof DecoderException) {
                 throwException(new MqttClientException("decoder exception", cause));
             } else {
@@ -432,13 +432,13 @@ public class MqttConnection {
                 ChannelFuture channelFuture = (ChannelFuture) future;
                 if (future.isSuccess()) {
                     channel = channelFuture.channel();
-                    tcpMqttConnectResultHandler.onSuccess();
+                    tcpMqttConnectResultHandler.onSuccess(MqttConnection.this);
                 } else {
                     Throwable cause = future.cause();
                     if (cause instanceof ConnectTimeoutException) {
-                        tcpMqttConnectResultHandler.onTimeout();
+                        tcpMqttConnectResultHandler.onTimeout(MqttConnection.this);
                     } else {
-                        tcpMqttConnectResultHandler.onError(cause);
+                        tcpMqttConnectResultHandler.onError(MqttConnection.this, cause);
                     }
                     status = Status.CLOSED;
                     closePromise.setSuccess(null);
@@ -464,7 +464,7 @@ public class MqttConnection {
                         .build();
                     pendingSubscriptions.put(packetId, pendingSubscription);
                 } else {
-                    mqttSubscribeResultHandler.onError(future.cause());
+                    mqttSubscribeResultHandler.onError(MqttConnection.this, future.cause());
                 }
             });
         }
@@ -492,9 +492,9 @@ public class MqttConnection {
                 if (qosLevel == MqttV311QosLevel.AT_MOST_ONCE) {
                     if ( mqttPublishResultHandler != null) {
                         if (future.isSuccess()) {
-                            mqttPublishResultHandler.onSuccess();
+                            mqttPublishResultHandler.onSuccess(MqttConnection.this);
                         } else {
-                            mqttPublishResultHandler.onError(future.cause());
+                            mqttPublishResultHandler.onError(MqttConnection.this, future.cause());
                         }
                     }
                 } else {
@@ -504,7 +504,7 @@ public class MqttConnection {
                             .publishResultHandler(mqttPublishResultHandler)
                             .build());
                     } else {
-                        mqttPublishResultHandler.onError(future.cause());
+                        mqttPublishResultHandler.onError(MqttConnection.this, future.cause());
                     }
                 }
             });
@@ -550,7 +550,7 @@ public class MqttConnection {
                 if (future.isSuccess()) {
                     pendingUnsubscriptions.put(packetId, new MqttPendingUnsubscription(topicFilters, unsubscribeResultHandler));
                 } else {
-                    unsubscribeResultHandler.onError(future.cause());
+                    unsubscribeResultHandler.onError(MqttConnection.this, future.cause());
                 }
             });
         }
@@ -566,7 +566,7 @@ public class MqttConnection {
 
         private void throwException(Throwable cause) {
             close();
-            connectionOption.getExceptionHandler().onException(cause);
+            connectionOption.getExceptionHandler().onException(MqttConnection.this, cause);
         }
     }
 }
