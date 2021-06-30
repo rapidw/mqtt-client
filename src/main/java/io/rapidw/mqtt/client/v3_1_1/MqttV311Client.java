@@ -47,7 +47,7 @@ public class MqttV311Client {
             .option(ChannelOption.SO_REUSEADDR, true)
             .option(ChannelOption.TCP_NODELAY, true);
         if (connectionOption.getTcpConnectTimeout() != 0) {
-            bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectionOption.getTcpConnectTimeout());
+            bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectionOption.getTcpConnectTimeout());
         }
         MqttConnection connection = new MqttConnection(bootstrap, connectionOption);
 

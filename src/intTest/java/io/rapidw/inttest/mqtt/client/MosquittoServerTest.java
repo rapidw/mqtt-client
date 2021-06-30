@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class MosquittoServerTest {
@@ -41,8 +42,10 @@ public class MosquittoServerTest {
             .clientId("test-wafer")
             .host("test.mosquitto.org")
             .port(1883)
-            .keepAliveSeconds(30)
-            .keepAliveSecondsOffset(2)
+            .keepAlive(30)
+            .keepAliveOffsetTimeUnit(TimeUnit.SECONDS)
+            .keepAliveOffset(2)
+            .keepAliveOffsetTimeUnit(TimeUnit.SECONDS)
             .tcpConnectTimeout(1000)
             .mqttConnectTimeout(2000)
             .exceptionHandler((connection, e) -> log.error("error", e))

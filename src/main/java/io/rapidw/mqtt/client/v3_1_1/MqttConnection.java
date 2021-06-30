@@ -306,7 +306,7 @@ public class MqttConnection {
                     // 添加IdleStateHandler,当连接处于idle状态时间超过设定，会发送userEvent，触发心跳协议处理
                     channel.pipeline().addBefore(MqttClientConstants.MQTT_HANDLER, MqttClientConstants.KEEPALIVE_HANDLER,
                         new IdleStateHandler(0,
-                            connectionOption.getKeepAliveSeconds() - connectionOption.getKeepAliveSecondsOffset(),
+                            (int) (connectionOption.getKeepAliveSeconds() - connectionOption.getKeepAliveSecondsOffset()),
                             0));
                 }
                 status = Status.CONNECTED;
@@ -396,7 +396,7 @@ public class MqttConnection {
                 .username(connectionOption.getUsername())
                 .password(connectionOption.getPassword())
                 .clientId(connectionOption.getClientId())
-                .keepaliveSeconds(connectionOption.getKeepAliveSeconds())
+                .keepaliveSeconds(((int) connectionOption.getKeepAliveSeconds()))
                 .cleanSession(connectionOption.isCleanSession());
 
             if (connectionOption.getWill() != null) {
