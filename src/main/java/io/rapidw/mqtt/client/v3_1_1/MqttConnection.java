@@ -300,14 +300,12 @@ public class MqttConnection {
 
         private void handleConnAck(MqttV311ConnAckPacket packet) {
             log.debug("handle CONACK");
-            channel.pipeline().remove(MqttClientConstants.MQTT_CONNECT_TIMER);
+            channel.pipeline().remove(MqttClientConstants.MQTT_CONNECT_TIMER_NAME);
             if (packet.getConnectReturnCode() == MqttV311ConnectReturnCode.CONNECTION_ACCEPTED) {
                 if (connectionOption.getKeepAliveSeconds() > 0) {
                     // 添加IdleStateHandler,当连接处于idle状态时间超过设定，会发送userEvent，触发心跳协议处理
-                    channel.pipeline().addBefore(MqttClientConstants.MQTT_HANDLER, MqttClientConstants.KEEPALIVE_HANDLER,
-                        new IdleStateHandler(0,
-                            (int) (connectionOption.getKeepAliveSeconds() - connectionOption.getKeepAliveSecondsOffset()),
-                            0));
+                    channel.pipeline().addBefore(MqttClientConstants.MQTT_CLIENT_HANDLER_NAME, MqttClientConstants.MQTT_KEEPALIVE_HANDLER_NAME,
+                        new IdleStateHandler(0, (int) connectionOption.getKeepAliveSeconds(), 0));
                 }
                 status = Status.CONNECTED;
                 mqttConnectResultHandler.onSuccess(MqttConnection.this);
@@ -420,25 +418,25 @@ public class MqttConnection {
                     }
                 });
             if (connectionOption.getMqttConnectTimeout() > 0) {
-                ctx.pipeline().addBefore(MqttClientConstants.MQTT_HANDLER, MqttClientConstants.MQTT_CONNECT_TIMER,
+                ctx.pipeline().addBefore(MqttClientConstants.MQTT_CLIENT_HANDLER_NAME, MqttClientConstants.MQTT_CONNECT_TIMER_NAME,
                     new ReadTimeoutHandler(connectionOption.getMqttConnectTimeout(), TimeUnit.MILLISECONDS));
             }
         }
 
         //----------------------------------------------------------------------------------------------------
 
-        public void connect(TcpConnectResultHandler tcpMqttConnectResultHandler) {
+        public void connect(TcpConnectResultHandler tcpConnectResultHandler) {
             bootstrap.connect(connectionOption.getHost(), connectionOption.getPort()).addListener(future -> {
                 ChannelFuture channelFuture = (ChannelFuture) future;
                 if (future.isSuccess()) {
                     channel = channelFuture.channel();
-                    tcpMqttConnectResultHandler.onSuccess(MqttConnection.this);
+                    tcpConnectResultHandler.onSuccess(MqttConnection.this);
                 } else {
                     Throwable cause = future.cause();
                     if (cause instanceof ConnectTimeoutException) {
-                        tcpMqttConnectResultHandler.onTimeout(MqttConnection.this);
+                        tcpConnectResultHandler.onTimeout(MqttConnection.this);
                     } else {
-                        tcpMqttConnectResultHandler.onError(MqttConnection.this, cause);
+                        tcpConnectResultHandler.onError(MqttConnection.this, cause);
                     }
                     status = Status.CLOSED;
                     closePromise.setSuccess(null);

@@ -59,6 +59,6 @@ class MqttChannelInitializer extends ChannelInitializer<NioSocketChannel> {
         }
         pipeline.addLast(new MqttV311Decoder());
         pipeline.addLast(MqttV311Encoder.INSTANCE);
-        pipeline.addLast(MqttClientConstants.MQTT_HANDLER, handler);
+        pipeline.addLast(MqttClientConstants.MQTT_CLIENT_HANDLER_NAME, handler);
     }
 }

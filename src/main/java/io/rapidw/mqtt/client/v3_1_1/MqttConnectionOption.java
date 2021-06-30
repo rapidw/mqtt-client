@@ -30,7 +30,6 @@ public class MqttConnectionOption {
     private final MqttV311Will will;
     private final boolean cleanSession;
     private final long keepAliveSeconds;
-    private final long keepAliveSecondsOffset;
 
     private final String clientId;
 
@@ -43,9 +42,8 @@ public class MqttConnectionOption {
     private final MqttExceptionHandler exceptionHandler;
 
     MqttConnectionOption(String host, int port, String username, byte[] password, MqttV311Will will, boolean cleanSession,
-                         int keepAlive, TimeUnit keepAliveTimeUnit, int keepAliveOffset, TimeUnit keepAliveOffsetTimeUnit,
-                         String clientId, byte[] serverCertificate, byte[] clientCertificate, int tcpConnectTimeout,
-                         TimeUnit tcpConnectTimeoutTimeUnit, int mqttConnectTimeout, TimeUnit mqttConnectTimeoutTimeUnit,
+                         int keepAlive, TimeUnit keepAliveTimeUnit, String clientId, byte[] serverCertificate, byte[] clientCertificate,
+                         int tcpConnectTimeout, TimeUnit tcpConnectTimeoutTimeUnit, int mqttConnectTimeout, TimeUnit mqttConnectTimeoutTimeUnit,
                          MqttExceptionHandler exceptionHandler) {
 
         this.host = Objects.requireNonNull(host);
@@ -59,21 +57,22 @@ public class MqttConnectionOption {
         } else {
             throw new MqttClientException("keepAliveTimeUnit required");
         }
-        if (keepAliveOffsetTimeUnit != null) {
-            this.keepAliveSecondsOffset = TimeUnit.SECONDS.convert(keepAliveOffset, keepAliveOffsetTimeUnit);
-        } else {
-            throw new MqttClientException("keepAliveOffsetTimeUnit required");
-        }
-        if (keepAlive != 0 && keepAliveSeconds - keepAliveSecondsOffset <= 0) {
-            throw new MqttClientException("invalid keepAlive and/or keepAliveOffset");
+        if (keepAlive < 0) {
+            throw new MqttClientException("invalid keepAlive");
         }
         this.clientId = Objects.requireNonNull(clientId);
         this.serverCertificate = serverCertificate;
         this.clientCertificate = clientCertificate;
+        if (tcpConnectTimeout < 0) {
+            throw new MqttClientException("invalid tcpConnectTimeout");
+        }
         if (tcpConnectTimeoutTimeUnit != null) {
             this.tcpConnectTimeout = TimeUnit.MILLISECONDS.convert(tcpConnectTimeout, tcpConnectTimeoutTimeUnit);
         } else {
             throw new MqttClientException("tcpConnectTimeoutTimeUnit required");
+        }
+        if (mqttConnectTimeout < 0) {
+            throw new MqttClientException("invalid mqttConnectTimeout");
         }
         if (mqttConnectTimeoutTimeUnit != null) {
             this.mqttConnectTimeout = TimeUnit.MILLISECONDS.convert(mqttConnectTimeout, mqttConnectTimeoutTimeUnit);
@@ -115,11 +114,6 @@ public class MqttConnectionOption {
         return this.keepAliveSeconds;
     }
 
-    public long getKeepAliveSecondsOffset() {
-        return this.keepAliveSecondsOffset;
-    }
-
-
     public String getClientId() {
         return this.clientId;
     }
@@ -154,8 +148,6 @@ public class MqttConnectionOption {
         private boolean cleanSession;
         private int keepAlive;
         private TimeUnit keepAliveTimeUnit;
-        private int keepAliveOffset;
-        private TimeUnit keepAliveOffsetTimeUnit;
         private String clientId;
         private byte[] serverCertificate;
         private byte[] clientCertificate;
@@ -199,7 +191,7 @@ public class MqttConnectionOption {
         }
 
         /**
-         * set keepAlive for this connection. Effective keepAlive will be this minus ${@link #keepAliveOffset}
+         * set keepAlive for this connection.
          * @param keepAlive keepAlive in CONNECT packet. 0 for close automatic heartbeat
          * @return this
          */
@@ -215,26 +207,6 @@ public class MqttConnectionOption {
          */
         public MqttConnectionOption.MqttConnectionOptionBuilder keepAliveTimeUnit(TimeUnit keepAliveTimeUnit) {
             this.keepAliveTimeUnit = keepAliveTimeUnit;
-            return this;
-        }
-
-        /**
-         * set offset of keepAlive. Effective keepAlive will be ${@link #keepAliveSeconds} minus this
-         * @param keepAliveOffset offset of keepAlive
-         * @return this
-         */
-        public MqttConnectionOption.MqttConnectionOptionBuilder keepAliveOffset(int keepAliveOffset) {
-            this.keepAliveOffset = keepAliveOffset;
-            return this;
-        }
-
-        /**
-         * set time unit of offset of keepAlive
-         * @param keepAliveOffsetTimeUnit offset of keepAlive
-         * @return this
-         */
-        public MqttConnectionOption.MqttConnectionOptionBuilder keepAliveOffsetTimeUnit(TimeUnit keepAliveOffsetTimeUnit) {
-            this.keepAliveOffsetTimeUnit = keepAliveOffsetTimeUnit;
             return this;
         }
 
@@ -295,7 +267,7 @@ public class MqttConnectionOption {
 
         public MqttConnectionOption build() {
             return new MqttConnectionOption(host, port, username, password, will, cleanSession, keepAlive, keepAliveTimeUnit,
-                keepAliveOffset, keepAliveOffsetTimeUnit, clientId, serverCertificate, clientCertificate, tcpConnectTimeout,
+                clientId, serverCertificate, clientCertificate, tcpConnectTimeout,
                 tcpConnectTimeoutTimeUnit, mqttConnectTimeout, mqttConnectTimeoutTimeUnit, exceptionHandler);
         }
     }

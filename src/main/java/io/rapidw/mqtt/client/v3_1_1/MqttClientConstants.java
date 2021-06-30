@@ -18,8 +18,8 @@ package io.rapidw.mqtt.client.v3_1_1;
 class MqttClientConstants {
 
     public static final String ThreadNamePrefix = "mqtt";
-    public static final String MQTT_CONNECT_TIMER = "mqtt_connect_timer";
-    public static final String MQTT_HANDLER = "mqtt_handler";
-    public static final String KEEPALIVE_HANDLER = "keepalive_handler";
+    public static final String MQTT_CONNECT_TIMER_NAME = "mqtt_connect_timer";
+    public static final String MQTT_CLIENT_HANDLER_NAME = "mqtt_client_handler";
+    public static final String MQTT_KEEPALIVE_HANDLER_NAME = "mqtt_keepalive_handler";
 
 }
