@@ -48,7 +48,7 @@ public class MqttConnection {
     private Status status = Status.NOT_CONNECTING;
     private Channel channel;
     private final IntObjectHashMap<MqttPendingSubscription> pendingSubscriptions = new IntObjectHashMap<>();
-    private final IntObjectHashMap<MqttPendingUnsubscription> pendingUnsubscriptions = new IntObjectHashMap<>();
+    private final IntObjectHashMap<MqttPendingUnsubscription> pendingUnsubscribes = new IntObjectHashMap<>();
     private final LinkedHashMap<Integer, MqttPendingMessage> pendingMessages = new LinkedHashMap<>();
     private final MqttTopicTree subscriptionTree = new MqttTopicTree();
     private Handler handler;
@@ -235,7 +235,11 @@ public class MqttConnection {
 
             MqttPendingMessage pending = pendingMessages.remove(curr);
             if (pending != null) {
-                pending.getPublishResultHandler().onSuccess(MqttConnection.this);
+                if (pending.getQosLevel() == MqttV311QosLevel.AT_LEAST_ONCE) {
+                    pending.getPublishResultHandler().onSuccess(MqttConnection.this);
+                } else {
+                    throwException(new MqttClientException("message in QoS 2 is UNSUPPORTED!"));
+                }
             } else {
                 throwException(new MqttClientException("invalid packetId in PUBACK packet, pending message not found"));
             }
@@ -331,7 +335,7 @@ public class MqttConnection {
                 throwException(new MqttClientException("invalid UNSUBACK packetId, required: " + curr + ", got: " + packet.getPacketId()));
             }
 
-            MqttPendingUnsubscription pending = pendingUnsubscriptions.remove(curr);
+            MqttPendingUnsubscription pending = pendingUnsubscribes.remove(curr);
             if (pending != null) {
                 for (String topicFilter: pending.getTopicFilters()) {
                     subscriptionTree.removeSubscription(topicFilter);
@@ -500,19 +504,14 @@ public class MqttConnection {
                         pendingMessages.put(finalPacketId, MqttPendingMessage.builder()
                             .packet(packet)
                             .publishResultHandler(mqttPublishResultHandler)
+                            .qosLevel(qosLevel)
                             .build());
+                        // todo： add timer for qos1/2
                     } else {
                         mqttPublishResultHandler.onError(MqttConnection.this, future.cause());
                     }
                 }
             });
-            switch (qosLevel) {
-                case AT_MOST_ONCE:
-
-                    break;
-                case AT_LEAST_ONCE:
-
-            }
         }
 
         private void pingReq(Channel channel) {
@@ -546,7 +545,7 @@ public class MqttConnection {
                 .build();
             channel.writeAndFlush(packet).addListener(future -> {
                 if (future.isSuccess()) {
-                    pendingUnsubscriptions.put(packetId, new MqttPendingUnsubscription(topicFilters, unsubscribeResultHandler));
+                    pendingUnsubscribes.put(packetId, new MqttPendingUnsubscription(topicFilters, unsubscribeResultHandler));
                 } else {
                     unsubscribeResultHandler.onError(MqttConnection.this, future.cause());
                 }

@@ -17,14 +17,17 @@ package io.rapidw.mqtt.client.v3_1_1;
 
 import io.rapidw.mqtt.client.v3_1_1.handler.MqttPublishResultHandler;
 import io.rapidw.mqtt.codec.v3_1_1.MqttV311PublishPacket;
+import io.rapidw.mqtt.codec.v3_1_1.MqttV311QosLevel;
 
 class MqttPendingMessage {
-    private MqttV311PublishPacket packet;
-    private MqttPublishResultHandler publishResultHandler;
+    private final MqttV311PublishPacket packet;
+    private final MqttPublishResultHandler publishResultHandler;
+    private final MqttV311QosLevel qosLevel;
 
-    MqttPendingMessage(MqttV311PublishPacket packet, MqttPublishResultHandler publishResultHandler) {
+    MqttPendingMessage(MqttV311PublishPacket packet, MqttPublishResultHandler publishResultHandler, MqttV311QosLevel qosLevel) {
         this.packet = packet;
         this.publishResultHandler = publishResultHandler;
+        this.qosLevel = qosLevel;
     }
 
     public static MqttPendingMessageBuilder builder() {
@@ -39,9 +42,14 @@ class MqttPendingMessage {
         return this.publishResultHandler;
     }
 
+    public MqttV311QosLevel getQosLevel() {
+        return this.qosLevel;
+    }
+
     public static class MqttPendingMessageBuilder {
         private MqttV311PublishPacket packet;
         private MqttPublishResultHandler publishResultHandler;
+        private MqttV311QosLevel qosLevel;
 
         MqttPendingMessageBuilder() {
         }
@@ -56,12 +64,14 @@ class MqttPendingMessage {
             return this;
         }
 
-        public MqttPendingMessage build() {
-            return new MqttPendingMessage(packet, publishResultHandler);
+        public MqttPendingMessage.MqttPendingMessageBuilder qosLevel(MqttV311QosLevel qosLevel) {
+            this.qosLevel = qosLevel;
+            return this;
         }
 
-        public String toString() {
-            return "MqttPendingMessage.MqttPendingMessageBuilder(packet=" + this.packet + ", publishResultHandler=" + this.publishResultHandler + ")";
+        public MqttPendingMessage build() {
+            return new MqttPendingMessage(packet, publishResultHandler, qosLevel);
         }
+
     }
 }
