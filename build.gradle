@@ -71,6 +71,7 @@ dependencies {
     intTestImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     intTestRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.6.0"
     intTestImplementation "commons-io:commons-io:2.6"
+    intTestImplementation 'commons-codec:commons-codec:1.15'
     intTestCompileOnly 'org.projectlombok:lombok:1.18.12'
     intTestAnnotationProcessor 'org.projectlombok:lombok:1.18.12'
 }
