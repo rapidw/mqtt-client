@@ -163,10 +163,10 @@ public class MqttConnection {
     }
 
     /**
-     * close this connection
+     * disconnect this connection
      */
-    public void close() {
-        handler.close();
+    public void disconnect() {
+        handler.disconnect();
     }
 
     /**
@@ -562,8 +562,13 @@ public class MqttConnection {
         }
 
         private void throwException(Throwable cause) {
-            close();
+            disconnect();
             connectionOption.getExceptionHandler().onException(MqttConnection.this, cause);
+        }
+
+        public void disconnect() {
+            channel.writeAndFlush(MqttV311DisconnectPacket.INSTANCE);
+            close();
         }
     }
 }

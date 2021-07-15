@@ -43,11 +43,11 @@ public class MosquittoServerTest {
             .host("test.mosquitto.org")
             .port(1883)
             .keepAlive(30)
-            .keepAliveOffsetTimeUnit(TimeUnit.SECONDS)
-            .keepAliveOffset(2)
-            .keepAliveOffsetTimeUnit(TimeUnit.SECONDS)
+            .keepAliveTimeUnit(TimeUnit.SECONDS)
             .tcpConnectTimeout(1000)
+            .tcpConnectTimeoutTimeUnit(TimeUnit.SECONDS)
             .mqttConnectTimeout(2000)
+            .mqttConnectTimeoutTimeUnit(TimeUnit.SECONDS)
             .exceptionHandler((connection, e) -> log.error("error", e))
             .build();
         MqttV311Client mqttV311Client = new MqttV311Client();
