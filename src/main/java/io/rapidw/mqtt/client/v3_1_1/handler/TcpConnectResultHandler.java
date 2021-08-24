@@ -21,16 +21,19 @@ public interface TcpConnectResultHandler {
 
     /**
      * will be called when TCP connection successfully established
+     * @param connection the connection
      */
     void onSuccess(MqttConnection connection);
 
     /**
      * will be called when error occurred during establishing TCP connection
+     * @param connection the connection
      * @param cause cause
      */
     void onError(MqttConnection connection, Throwable cause);
     /**
      * will be called when establishing TCP connection timeout
+     * @param connection the connection
      */
     void onTimeout(MqttConnection connection);
 }
