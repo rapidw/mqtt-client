@@ -2,33 +2,15 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'jacoco'
-    id "me.champeau.gradle.jmh" version "0.5.0"
     id 'net.researchgate.release' version '2.8.1'
     id 'se.patrikerdes.use-latest-versions' version '0.2.13'
     id 'com.github.ben-manes.versions' version '0.28.0'
-    id "com.jfrog.bintray" version "1.8.4"
     id "com.github.hierynomus.license" version "0.15.0"
 //    id "com.star-zero.gradle.githook" version "1.2.0"
-    id "com.jfrog.artifactory" version "4.14.1"
 }
-
-import org.gradle.api.publish.maven.internal.artifact.FileBasedMavenArtifact
 
 group = 'io.rapidw.mqtt'
 description = "Rapidw MQTT client"
-
-def String getProp(String name) {
-    if (hasProperty(name)) {
-        return properties[name]
-    } else {
-        String env = System.getenv(name)
-        if (env != null) {
-            return env
-        } else {
-            return ""
-        }
-    }
-}
 
 ext {
     url = 'https://github.com/rapidw/mqtt-client'
@@ -36,12 +18,7 @@ ext {
 }
 
 repositories {
-    jcenter()
     mavenCentral()
-    maven {
-        url "http://oss.jfrog.org/artifactory/simple/libs-snapshot/"
-        allowInsecureProtocol true
-    }
 }
 
 sourceSets {
@@ -57,7 +34,7 @@ configurations {
 }
 
 dependencies {
-    api 'io.rapidw.mqtt:rapidw-mqtt-codec:0.0.6'
+    api 'io.rapidw.mqtt:rapidw-mqtt-codec:0.0.8'
     implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation 'io.netty:netty-handler:4.1.45.Final'
 
@@ -148,6 +125,15 @@ publishing {
             }
         }
     }
+    repositories {
+        maven {
+            url = "https://oss.sonatype.org/service/local/staging/deploy/maven2"
+            credentials {
+                username mavenCentralUsername
+                password mavenCentralPassword
+            }
+        }
+    }
 }
 
 // include pom in jar
@@ -163,75 +149,4 @@ release {
     pushReleaseVersionBranch = "master"
 }
 
-bintray {
-    user = getProp("bintrayUser")
-    key = getProp("bintrayKey")
-
-    publish = true
-    override = true
-
-    pkg {
-        repo = 'maven'
-        name = project.name
-        userOrg = "rapidw"
-        licenses = ['Apache-2.0']
-        vcsUrl = project.vcsUrl
-
-        version {
-            name = project.version
-
-            gpg {
-                sign = true
-                passphrase = getProp("signing.password")
-            }
-
-            mavenCentralSync {
-                sync = true
-                user = getProp("nexusUsername")
-                password = getProp("nexusPassword")
-                close = '1'
-            }
-        }
-    }
-
-    publications = ["mavenJava"]
-}
-
-// workaround for upload gradle module metadata to bintray
-project.tasks.withType(com.jfrog.bintray.gradle.tasks.BintrayUploadTask) {
-    doFirst {
-        publishing.publications.withType(MavenPublication).each { publication ->
-            File moduleFile = project.buildDir.toPath()
-                .resolve("publications/${publication.name}/module.json").toFile()
-
-            if (moduleFile.exists()) {
-                publication.artifact(new FileBasedMavenArtifact(moduleFile) {
-                    @Override
-                    protected String getDefaultExtension() {
-                        return "module"
-                    }
-                })
-            }
-        }
-    }
-}
-
-artifactory {
-    contextUrl = 'https://oss.jfrog.org/artifactory'
-    publish {
-        repository {
-            repoKey = 'oss-snapshot-local'
-            username = getProp("bintrayUser")
-            password = getProp("bintrayKey")
-        }
-        defaults {
-            publications 'mavenJava'
-            publishBuildInfo = true
-            publishArtifacts = true
-            publishPom = true
-            publishIvy = false
-        }
-    }
-}
-
-afterReleaseBuild.dependsOn bintrayUpload
+afterReleaseBuild.dependsOn publish
