@@ -20,17 +20,20 @@ import io.rapidw.mqtt.client.v3_1_1.MqttConnection;
 public interface MqttConnectResultHandler {
     /**
      * will be called when MQTT connection successfully established
+     * @param connection the mqtt connection
      */
     void onSuccess(MqttConnection connection);
 
     /**
      * will be called when error occurred during establishing MQTT connection
+     * @param connection the mqtt connection
      * @param cause cause
      */
     void onError(MqttConnection connection, Throwable cause);
 
     /**
      * will be called when establishing MQTT connection timeout
+     * @param connection the mqtt connection
      */
     void onTimeout(MqttConnection connection);
 }

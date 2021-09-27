@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 public interface MqttMessageHandler {
     /**
      * will be called when new message from subscribed topic received
+     * @param connection the mqtt connection
      * @param topic topic
      * @param qos QoS level
      * @param retain retain

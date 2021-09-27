@@ -21,6 +21,7 @@ public interface MqttPublishResultHandler {
 
     /**
      * will be called when a message published successfully
+     * @param connection the mqtt connection
      */
     void onSuccess(MqttConnection connection);
 

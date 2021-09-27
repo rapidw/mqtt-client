@@ -21,6 +21,7 @@ public interface MqttUnsubscribeResultHandler {
 
     /**
      * will be called when a subscription unsubscribed successfully
+     * @param connection the mqtt connection
      */
     void onSuccess(MqttConnection connection);
 

@@ -23,6 +23,7 @@ import java.util.List;
 public interface MqttSubscribeResultHandler {
     /**
      * will be called when a topic subscribed successfully
+     * @param connection the mqtt connection
      * @param subscriptions subscribed subscriptions
      */
     void onSuccess(MqttConnection connection, List<MqttSubscription> subscriptions);
