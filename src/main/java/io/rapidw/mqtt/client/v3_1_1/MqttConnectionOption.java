@@ -42,7 +42,7 @@ public class MqttConnectionOption {
     private final MqttExceptionHandler exceptionHandler;
 
     MqttConnectionOption(String host, int port, String username, byte[] password, MqttV311Will will, boolean cleanSession,
-                         int keepAlive, TimeUnit keepAliveTimeUnit, String clientId, byte[] serverCertificate, byte[] clientCertificate,
+                         int keepAliveSeconds, String clientId, byte[] serverCertificate, byte[] clientCertificate,
                          int tcpConnectTimeout, TimeUnit tcpConnectTimeoutTimeUnit, int mqttConnectTimeout, TimeUnit mqttConnectTimeoutTimeUnit,
                          MqttExceptionHandler exceptionHandler) {
 
@@ -52,12 +52,8 @@ public class MqttConnectionOption {
         this.password = password;
         this.will = will;
         this.cleanSession = cleanSession;
-        if (keepAliveTimeUnit != null) {
-            this.keepAliveSeconds = TimeUnit.SECONDS.convert(keepAlive, keepAliveTimeUnit);
-        } else {
-            throw new MqttClientException("keepAliveTimeUnit required");
-        }
-        if (keepAlive < 0) {
+        this.keepAliveSeconds = keepAliveSeconds;
+        if (keepAliveSeconds < 0) {
             throw new MqttClientException("invalid keepAlive");
         }
         this.clientId = Objects.requireNonNull(clientId);
@@ -146,8 +142,7 @@ public class MqttConnectionOption {
         private byte[] password;
         private MqttV311Will will;
         private boolean cleanSession;
-        private int keepAlive;
-        private TimeUnit keepAliveTimeUnit;
+        private int keepAliveSeconds;
         private String clientId;
         private byte[] serverCertificate;
         private byte[] clientCertificate;
@@ -192,21 +187,11 @@ public class MqttConnectionOption {
 
         /**
          * set keepAlive for this connection.
-         * @param keepAlive keepAlive in CONNECT packet. 0 for close automatic heartbeat
+         * @param keepAliveSeconds keepAlive in CONNECT packet. 0 for close automatic heartbeat
          * @return this
          */
-        public MqttConnectionOption.MqttConnectionOptionBuilder keepAlive(int keepAlive) {
-            this.keepAlive = keepAlive;
-            return this;
-        }
-
-        /**
-         * set time unit of keepAlive
-         * @param keepAliveTimeUnit time unit of keepAlive
-         * @return this
-         */
-        public MqttConnectionOption.MqttConnectionOptionBuilder keepAliveTimeUnit(TimeUnit keepAliveTimeUnit) {
-            this.keepAliveTimeUnit = keepAliveTimeUnit;
+        public MqttConnectionOption.MqttConnectionOptionBuilder keepAliveSeconds(int keepAliveSeconds) {
+            this.keepAliveSeconds = keepAliveSeconds;
             return this;
         }
 
@@ -235,22 +220,14 @@ public class MqttConnectionOption {
             return this;
         }
 
-        public MqttConnectionOption.MqttConnectionOptionBuilder tcpConnectTimeout(int tcpConnectTimeout) {
+        public MqttConnectionOption.MqttConnectionOptionBuilder tcpConnectTimeout(int tcpConnectTimeout, TimeUnit tcpConnectTimeoutTimeUnit) {
             this.tcpConnectTimeout = tcpConnectTimeout;
-            return this;
-        }
-
-        public MqttConnectionOption.MqttConnectionOptionBuilder tcpConnectTimeoutTimeUnit(TimeUnit tcpConnectTimeoutTimeUnit) {
             this.tcpConnectTimeoutTimeUnit = tcpConnectTimeoutTimeUnit;
             return this;
         }
 
-        public MqttConnectionOption.MqttConnectionOptionBuilder mqttConnectTimeout(int mqttConnectTimeout) {
+        public MqttConnectionOption.MqttConnectionOptionBuilder mqttConnectTimeout(int mqttConnectTimeout, TimeUnit mqttConnectTimeoutTimeUnit) {
             this.mqttConnectTimeout = mqttConnectTimeout;
-            return this;
-        }
-
-        public MqttConnectionOption.MqttConnectionOptionBuilder mqttConnectTimeoutTimeUnit(TimeUnit mqttConnectTimeoutTimeUnit) {
             this.mqttConnectTimeoutTimeUnit = mqttConnectTimeoutTimeUnit;
             return this;
         }
@@ -266,7 +243,7 @@ public class MqttConnectionOption {
         }
 
         public MqttConnectionOption build() {
-            return new MqttConnectionOption(host, port, username, password, will, cleanSession, keepAlive, keepAliveTimeUnit,
+            return new MqttConnectionOption(host, port, username, password, will, cleanSession, keepAliveSeconds,
                 clientId, serverCertificate, clientCertificate, tcpConnectTimeout,
                 tcpConnectTimeoutTimeUnit, mqttConnectTimeout, mqttConnectTimeoutTimeUnit, exceptionHandler);
         }

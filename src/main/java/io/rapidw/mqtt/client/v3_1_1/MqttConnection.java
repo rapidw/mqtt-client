@@ -398,7 +398,7 @@ public class MqttConnection {
                 .username(connectionOption.getUsername())
                 .password(connectionOption.getPassword())
                 .clientId(connectionOption.getClientId())
-                .keepaliveSeconds(((int) connectionOption.getKeepAliveSeconds()))
+                .keepAliveSeconds(((int) connectionOption.getKeepAliveSeconds()))
                 .cleanSession(connectionOption.isCleanSession());
 
             if (connectionOption.getWill() != null) {
@@ -476,7 +476,7 @@ public class MqttConnection {
                 throw new UnsupportedOperationException("publish with qos1 or qos2 current unsupported");
             }
             int packetId = 0;
-            MqttV311PublishPacket.MqttV311PublishPacketBuilder builder = MqttV311PublishPacket.builder()
+            MqttV311PublishPacket.Builder builder = MqttV311PublishPacket.builder()
                 .topic(topic)
                 .qosLevel(qosLevel)
                 .dupFlag(false)

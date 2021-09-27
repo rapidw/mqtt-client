@@ -19,6 +19,7 @@ ext {
 }
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
@@ -35,7 +36,7 @@ configurations {
 }
 
 dependencies {
-    api 'io.rapidw.mqtt:rapidw-mqtt-codec:0.0.8'
+    api 'io.rapidw.mqtt:rapidw-mqtt-codec:0.0.11'
     implementation 'org.slf4j:slf4j-api:1.7.30'
     implementation 'io.netty:netty-handler:4.1.45.Final'
 
@@ -52,6 +53,7 @@ dependencies {
     intTestImplementation 'commons-codec:commons-codec:1.15'
     intTestCompileOnly 'org.projectlombok:lombok:1.18.12'
     intTestAnnotationProcessor 'org.projectlombok:lombok:1.18.12'
+    intTestImplementation 'commons-codec:commons-codec:1.15'
 }
 
 license {

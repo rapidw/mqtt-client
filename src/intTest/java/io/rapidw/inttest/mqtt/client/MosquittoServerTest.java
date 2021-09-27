@@ -42,12 +42,9 @@ public class MosquittoServerTest {
             .clientId("test-wafer")
             .host("test.mosquitto.org")
             .port(1883)
-            .keepAlive(30)
-            .keepAliveTimeUnit(TimeUnit.SECONDS)
-            .tcpConnectTimeout(1000)
-            .tcpConnectTimeoutTimeUnit(TimeUnit.SECONDS)
-            .mqttConnectTimeout(2000)
-            .mqttConnectTimeoutTimeUnit(TimeUnit.SECONDS)
+            .keepAliveSeconds(30)
+            .tcpConnectTimeout(1, TimeUnit.SECONDS)
+            .mqttConnectTimeout(2, TimeUnit.SECONDS)
             .exceptionHandler((connection, e) -> log.error("error", e))
             .build();
         MqttV311Client mqttV311Client = new MqttV311Client();
