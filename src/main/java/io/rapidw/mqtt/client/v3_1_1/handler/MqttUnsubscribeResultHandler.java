@@ -27,6 +27,7 @@ public interface MqttUnsubscribeResultHandler {
 
     /**
      * will be called when error occurred during unsubscribing a subscription
+     * @param connection the mqtt connection
      * @param cause cause
      */
     void onError(MqttConnection connection, Throwable cause);

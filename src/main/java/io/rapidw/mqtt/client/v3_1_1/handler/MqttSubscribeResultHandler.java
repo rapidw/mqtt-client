@@ -30,6 +30,7 @@ public interface MqttSubscribeResultHandler {
 
     /**
      * will be called when error occurred during subscribing a topic
+     * @param connection the mqtt connection
      * @param cause cause
      */
     void onError(MqttConnection connection, Throwable cause);

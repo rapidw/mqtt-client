@@ -27,6 +27,7 @@ public interface MqttPublishResultHandler {
 
     /**
      * will be called when error occurred during publishing a message
+     * @param connection the mqtt connection
      * @param cause cause
      */
     void onError(MqttConnection connection, Throwable cause);
