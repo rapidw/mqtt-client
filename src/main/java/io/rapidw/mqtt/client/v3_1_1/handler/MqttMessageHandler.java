@@ -31,7 +31,7 @@ public interface MqttMessageHandler {
      * @param packetId packetId for QoS 1 or 2. For QoS 0, this parameter should be ignored
      * @param payload payload
      */
-    void onMessage(MqttConnection connection, String topic, MqttV311QosLevel qos, boolean retain, boolean dupFlag, int packetId, byte[] payload);
+    void onMessage(MqttConnection connection, String topic, MqttV311QosLevel qos, boolean retain, boolean dupFlag, Integer packetId, byte[] payload);
 
     /**
      * do nothing when message received, just print log
@@ -39,7 +39,7 @@ public interface MqttMessageHandler {
     MqttMessageHandler NoOpHandler = new MqttMessageHandler() {
         Logger logger = LoggerFactory.getLogger(getClass());
         @Override
-        public void onMessage(MqttConnection connection, String topic, MqttV311QosLevel qos, boolean retain, boolean dupFlag, int packetId, byte[] payload) {
+        public void onMessage(MqttConnection connection, String topic, MqttV311QosLevel qos, boolean retain, boolean dupFlag, Integer packetId, byte[] payload) {
             logger.warn("No handler to handle data, topic: {}", topic);
         }
     };
