@@ -22,10 +22,11 @@ import io.rapidw.mqtt.codec.v3_1_1.MqttV311ConnectReturnCode;
  */
 public class MqttConnectionException extends MqttClientException {
 
-    private MqttV311ConnectReturnCode connectReturnCode;
+    private final MqttV311ConnectReturnCode connectReturnCode;
 
     MqttConnectionException(MqttV311ConnectReturnCode connectReturnCode) {
         super("connect failed, return code is " + connectReturnCode.name());
+        this.connectReturnCode = connectReturnCode;
     }
 
     /**

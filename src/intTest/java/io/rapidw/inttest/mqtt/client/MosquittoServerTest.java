@@ -15,10 +15,7 @@
  */
 package io.rapidw.inttest.mqtt.client;
 
-import io.rapidw.mqtt.client.v3_1_1.MqttV311Client;
-import io.rapidw.mqtt.client.v3_1_1.MqttConnection;
-import io.rapidw.mqtt.client.v3_1_1.MqttConnectionOption;
-import io.rapidw.mqtt.client.v3_1_1.MqttSubscription;
+import io.rapidw.mqtt.client.v3_1_1.*;
 import io.rapidw.mqtt.client.v3_1_1.handler.MqttConnectResultHandler;
 import io.rapidw.mqtt.client.v3_1_1.handler.MqttMessageHandler;
 import io.rapidw.mqtt.client.v3_1_1.handler.MqttSubscribeResultHandler;
@@ -72,7 +69,7 @@ public class MosquittoServerTest {
             }
         }, new MqttConnectResultHandler() {
             @Override
-            public void onError(MqttConnection connection1, Throwable cause) {
+            public void onError(MqttConnection connection1, MqttClientException cause) {
                 log.error("mqtt connect error", cause);
             }
 

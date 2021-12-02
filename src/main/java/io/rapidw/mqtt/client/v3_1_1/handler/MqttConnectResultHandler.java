@@ -15,6 +15,7 @@
  */
 package io.rapidw.mqtt.client.v3_1_1.handler;
 
+import io.rapidw.mqtt.client.v3_1_1.MqttClientException;
 import io.rapidw.mqtt.client.v3_1_1.MqttConnection;
 
 public interface MqttConnectResultHandler {
@@ -29,7 +30,7 @@ public interface MqttConnectResultHandler {
      * @param connection the mqtt connection
      * @param cause cause
      */
-    void onError(MqttConnection connection, Throwable cause);
+    void onError(MqttConnection connection, MqttClientException cause);
 
     /**
      * will be called when establishing MQTT connection timeout
