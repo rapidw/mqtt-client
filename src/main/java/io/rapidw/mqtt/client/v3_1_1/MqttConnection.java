@@ -34,7 +34,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MqttConnection {
-    private static Logger log = LoggerFactory.getLogger(MqttConnection.class);
+    private final static Logger log = LoggerFactory.getLogger(MqttConnection.class);
 
     private enum Status {
         NOT_CONNECTING,
@@ -389,6 +389,9 @@ public class MqttConnection {
         public void channelInactive(ChannelHandlerContext ctx) {
             closePromise.setSuccess(null);
             log.debug("connection closed");
+            if (status != Status.CLOSED) {
+                connectionOption.getExceptionHandler().onException(MqttConnection.this, new MqttClientException("connection closed unexpectedly"));
+            }
         }
 
         private void doConnect(ChannelHandlerContext ctx) {
@@ -417,8 +420,7 @@ public class MqttConnection {
                         log.debug("send connect success");
                     } else {
                         log.debug("send connect failed", future.cause());
-                        status = Status.CLOSED;
-                        ctx.close();
+                        close();
                     }
                 });
             if (connectionOption.getMqttConnectTimeout() > 0) {
@@ -528,6 +530,9 @@ public class MqttConnection {
                 });
         }
 
+        /**
+         * close connection
+         */
         public void close() {
             status = Status.CLOSED;
             channel.close();
@@ -561,11 +566,18 @@ public class MqttConnection {
             });
         }
 
+        /**
+         * called when exception happens
+         * @param cause cause
+         */
         private void throwException(Throwable cause) {
             disconnect();
             connectionOption.getExceptionHandler().onException(MqttConnection.this, cause);
         }
 
+        /**
+         * send DISCONNECT packet to server and close connection
+         */
         public void disconnect() {
             channel.writeAndFlush(MqttV311DisconnectPacket.INSTANCE);
             close();
