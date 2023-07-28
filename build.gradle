@@ -1,21 +1,24 @@
 plugins {
     id 'java-library'
     id 'maven-publish'
+    id 'jvm-test-suite'
     id 'jacoco'
-    id "signing"
-    id 'net.researchgate.release' version '2.8.1'
-    id 'se.patrikerdes.use-latest-versions' version '0.2.13'
-    id 'com.github.ben-manes.versions' version '0.28.0'
-    id "com.github.hierynomus.license" version "0.15.0"
+    id 'signing'
+    id "net.researchgate.release" version "3.0.2"
+    id "se.patrikerdes.use-latest-versions" version "0.2.13"
+    id "com.github.ben-manes.versions" version "0.28.0"
+    id "io.github.gradle-nexus.publish-plugin" version "2.0.0-rc-1"
+    id "io.freefair.lombok" version "8.1.0"
+    id "com.github.hierynomus.license" version "0.16.1"
 //    id "com.star-zero.gradle.githook" version "1.2.0"
 }
 
-group = 'io.rapidw.mqtt'
+group = "io.rapidw.mqtt"
 description = "Rapidw MQTT client"
 
 ext {
-    url = 'https://github.com/rapidw/mqtt-client'
-    vcsUrl = "${url}.git"
+    projectUrl = 'https://github.com/rapidw/mqtt-client'
+    vcsUrl = "${projectUrl}.git"
 }
 
 repositories {
@@ -23,78 +26,82 @@ repositories {
     mavenCentral()
 }
 
-sourceSets {
-    intTest {
-        compileClasspath += sourceSets.main.output
-        runtimeClasspath += sourceSets.main.output
+testing {
+    suites {
+        test {
+            useSpock()
+        }
+
+        integrationTest(JvmTestSuite) {
+            dependencies {
+                implementation(project())
+            }
+
+            targets {
+                all {
+                    testTask.configure {
+                        shouldRunAfter(test)
+                    }
+                }
+            }
+        }
     }
+}
+
+tasks.named("check") {
+    dependsOn(testing.suites.integrationTest)
 }
 
 configurations {
-    intTestImplementation.extendsFrom implementation
-    intTestRuntimeOnly.extendsFrom runtimeOnly
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntimeOnly.extendsFrom testRuntimeOnly
+    integrationTestCompileOnly.extendsFrom testCompileOnly
+    integrationTestAnnotationProcessor.extendsFrom testAnnotationProcessor
 }
 
 dependencies {
-    api 'io.rapidw.mqtt:rapidw-mqtt-codec:0.0.13'
-    implementation 'org.slf4j:slf4j-api:1.7.30'
-    implementation 'io.netty:netty-handler:4.1.45.Final'
-    implementation 'io.netty:netty-transport:4.1.45.Final'
+    api "io.rapidw.mqtt:rapidw-mqtt-codec:0.0.13"
+    implementation "org.slf4j:slf4j-api:1.7.30"
+    implementation "io.netty:netty-handler:4.1.45.Final"
+    implementation "io.netty:netty-transport:4.1.45.Final"
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
-    testImplementation 'ch.qos.logback:logback-classic:1.2.3'
-    testImplementation 'org.mockito:mockito-core:3.3.0'
-    testImplementation 'org.assertj:assertj-core:3.11.1'
-    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.6.0"
+    testImplementation 'org.spockframework:spock-core:2.3-groovy-3.0'
+    testImplementation "org.spockframework:spock-spring:2.3-groovy-3.0"
 
-    intTestImplementation 'ch.qos.logback:logback-classic:1.2.3'
-    intTestImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
-    intTestRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:5.6.0"
-    intTestImplementation "commons-io:commons-io:2.6"
-    intTestImplementation 'commons-codec:commons-codec:1.15'
-    intTestCompileOnly 'org.projectlombok:lombok:1.18.12'
-    intTestAnnotationProcessor 'org.projectlombok:lombok:1.18.12'
-    intTestImplementation 'commons-codec:commons-codec:1.15'
+    integrationTestImplementation "ch.qos.logback:logback-classic:1.2.3"
+    integrationTestImplementation("commons-io:commons-io:2.6")
+    integrationTestImplementation("commons-codec:commons-codec:1.15")
+    integrationTestCompileOnly("org.projectlombok:lombok:1.18.12")
+    integrationTestAnnotationProcessor("org.projectlombok:lombok:1.18.12")
+    integrationTestImplementation("commons-codec:commons-codec:1.15")
 }
 
-license {
-    header project.file("gradle/license-header")
-}
-
-tasks.withType(JavaCompile) {
-
-    options.encoding = "UTF-8"
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
-}
-
-javadoc {
-    options {
-        encoding = 'UTF-8'
-        locale 'en_US'
-        jFlags '-Duser.language=en_US'
-    }
-
-    if(JavaVersion.current().isJava9Compatible()) {
-        options.addBooleanOption('html5', true)
-    }
-}
-
-tasks.withType(Test) {
-    useJUnitPlatform()
-}
-
-task integrationTest(type: Test) {
-    description = 'Runs integration tests.'
-    group = 'verification'
-
-    testClassesDirs = sourceSets.intTest.output.classesDirs
-    classpath = sourceSets.intTest.runtimeClasspath
-    shouldRunAfter test
-}
 java {
     withJavadocJar()
     withSourcesJar()
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+}
+
+//license {
+//    header project.file("gradle/license-header")
+//}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+}
+
+tasks.withType(Javadoc).configureEach {
+    options {
+        encoding = "UTF-8"
+        locale("en_US")
+        jFlags("-Duser.language=en_US")
+    }
+
+    if (JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption("html5", true)
+    }
 }
 
 publishing {
@@ -105,56 +112,62 @@ publishing {
             pom {
                 name = "$group:${project.name}"
                 description = project.description
-                url = project.url
+                url = projectUrl
 
                 licenses {
                     license {
-                        name = 'The Apache License, Version 2.0'
-                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        name = "The Apache License, Version 2.0"
+                        url = "http://www.apache.org/licenses/LICENSE-2.0.txt"
                     }
                 }
 
                 developers {
                     developer {
-                        name = 'pvtyuan'
-                        email = 'pvtyuan@foxmail.com'
+                        name = "pvtyuan"
+                        email = "yyz139@gmail.com"
                     }
                 }
 
                 scm {
-                    connection = "scm:git:${project.vcsUrl}"
-                    developerConnection = "scm:git:${project.vcsUrl}"
-                    url = project.url
+                    connection = "scm:git:${vcsUrl}"
+                    developerConnection = "scm:git:${vcsUrl}"
+                    url = projectUrl
                 }
             }
         }
-    }
-    repositories {
-        maven {
-            url = "https://oss.sonatype.org/service/local/staging/deploy/maven2"
-            credentials {
-                username mavenCentralUsername
-                password mavenCentralPassword
-            }
-        }
-    }
-}
-
-// include pom in jar
-jar {
-    into("META-INF/maven/$project.group/$project.name") {
-        from generatePomFileForMavenJavaPublication
-        rename ".*", "pom.xml"
     }
 }
 
 release {
     failOnUnversionedFiles = false
     pushReleaseVersionBranch = "master"
+    git {
+        requireBranch.set("master")
+    }
 }
 
 signing {
-    sign publishing.publications
+    sign publishing.publications.mavenJava
 }
 
-afterReleaseBuild.dependsOn publish
+nexusPublishing.repositories {
+    sonatype {
+        username.set(providers.gradleProperty("mavenCentralUsername"))
+        password.set(providers.gradleProperty("mavenCentralPassword"))
+    }
+}
+
+release {
+    failOnUnversionedFiles.set(false)
+    pushReleaseVersionBranch.set("master")
+    git {
+        requireBranch.set("master")
+    }
+}
+
+tasks.named("closeAndReleaseSonatypeStagingRepository") {
+    dependsOn("publishToSonatype")
+}
+tasks.afterReleaseBuild {
+    dependsOn("closeAndReleaseSonatypeStagingRepository")
+}
