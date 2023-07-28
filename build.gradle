@@ -69,11 +69,11 @@ dependencies {
     testImplementation "org.spockframework:spock-spring:2.3-groovy-3.0"
 
     integrationTestImplementation "ch.qos.logback:logback-classic:1.2.3"
-    integrationTestImplementation("commons-io:commons-io:2.6")
-    integrationTestImplementation("commons-codec:commons-codec:1.15")
-    integrationTestCompileOnly("org.projectlombok:lombok:1.18.12")
-    integrationTestAnnotationProcessor("org.projectlombok:lombok:1.18.12")
-    integrationTestImplementation("commons-codec:commons-codec:1.15")
+    integrationTestImplementation "commons-io:commons-io:2.6"
+    integrationTestImplementation "commons-codec:commons-codec:1.15"
+    integrationTestCompileOnly "org.projectlombok:lombok:1.18.12"
+    integrationTestAnnotationProcessor "org.projectlombok:lombok:1.18.12"
+    integrationTestImplementation "commons-codec:commons-codec:1.15"
 }
 
 java {
@@ -154,14 +154,6 @@ nexusPublishing.repositories {
     sonatype {
         username = properties["mavenCentralUsername"]
         password = properties["mavenCentralPassword"]
-    }
-}
-
-release {
-    failOnUnversionedFiles.set(false)
-    pushReleaseVersionBranch.set("master")
-    git {
-        requireBranch.set("master")
     }
 }
 
