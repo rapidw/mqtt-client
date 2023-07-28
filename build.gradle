@@ -152,8 +152,8 @@ signing {
 
 nexusPublishing.repositories {
     sonatype {
-        username.set(providers.gradleProperty("mavenCentralUsername"))
-        password.set(providers.gradleProperty("mavenCentralPassword"))
+        username = properties["mavenCentralUsername"]
+        password = properties["mavenCentralPassword"]
     }
 }
 
