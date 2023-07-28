@@ -22,7 +22,6 @@ ext {
 }
 
 repositories {
-    mavenLocal()
     mavenCentral()
 }
 
@@ -84,9 +83,9 @@ java {
     }
 }
 
-//license {
-//    header project.file("gradle/license-header")
-//}
+license {
+    header project.file("gradle/license-header")
+}
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
