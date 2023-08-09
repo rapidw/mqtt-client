@@ -228,12 +228,8 @@ public class MqttConnection {
         }
 
         private void handlePubAck(MqttV311PubAckPacket packet) {
-            int curr = currentPacketId.get();
-            if (packet.getPacketId() != curr) {
-                throwException(new MqttClientException("invalid SUBACK packetId, required: " + curr + ", got: " + packet.getPacketId()));
-            }
 
-            MqttPendingMessage pending = pendingMessages.remove(curr);
+            MqttPendingMessage pending = pendingMessages.remove(packet.getPacketId());
             if (pending != null) {
                 if (pending.getQosLevel() == MqttV311QosLevel.AT_LEAST_ONCE) {
                     pending.getPublishResultHandler().onSuccess(MqttConnection.this);
@@ -250,7 +246,7 @@ public class MqttConnection {
                 throw new UnsupportedOperationException("current only QoS 0 message supported");
             }
             Set<MqttMessageHandler> handlers = subscriptionTree.getHandlersByTopicName(packet.getTopic());
-            if (handlers.size() == 0) {
+            if (handlers.isEmpty()) {
                 throwException(new MqttClientException("PUBLISH packet without message handler received, topic: " + packet.getTopic()));
             }
             for (MqttMessageHandler handler: handlers) {
@@ -262,12 +258,8 @@ public class MqttConnection {
         }
 
         private void handleSubAck(MqttV311SubAckPacket packet) {
-            int curr = currentPacketId.get();
-            if (packet.getPacketId() != curr) {
-                throwException(new MqttClientException("invalid SUBACK packetId, required: " + curr + ", got: " + packet.getPacketId()));
-            }
 
-            MqttPendingSubscription pending = pendingSubscriptions.remove(curr);
+            MqttPendingSubscription pending = pendingSubscriptions.remove(packet.getPacketId());
             if (pending != null) {
                 List<MqttV311TopicAndQosLevel> topicAndQosLevels = pending.getTopicAndQosLevels();
                 MqttMessageHandler messageHandler = pending.getMessageHandler();
@@ -330,12 +322,7 @@ public class MqttConnection {
         private void handleUnSubAck(MqttV311UnsubAckPacket packet) {
             log.debug("handle UNSUBACK");
 
-            int curr = currentPacketId.get();
-            if (packet.getPacketId() != curr) {
-                throwException(new MqttClientException("invalid UNSUBACK packetId, required: " + curr + ", got: " + packet.getPacketId()));
-            }
-
-            MqttPendingUnsubscription pending = pendingUnsubscribes.remove(curr);
+            MqttPendingUnsubscription pending = pendingUnsubscribes.remove(packet.getPacketId());
             if (pending != null) {
                 for (String topicFilter: pending.getTopicFilters()) {
                     subscriptionTree.removeSubscription(topicFilter);
