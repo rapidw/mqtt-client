@@ -2,6 +2,7 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'jvm-test-suite'
+    id 'groovy'
     id 'jacoco'
     id 'signing'
     id "net.researchgate.release" version "3.0.2"
@@ -64,8 +65,7 @@ dependencies {
     implementation "io.netty:netty-handler:4.1.45.Final"
     implementation "io.netty:netty-transport:4.1.45.Final"
 
-    testImplementation 'org.spockframework:spock-core:2.3-groovy-3.0'
-    testImplementation "org.spockframework:spock-spring:2.3-groovy-3.0"
+    testImplementation 'org.spockframework:spock-core:2.3-groovy-4.0'
 
     integrationTestImplementation "ch.qos.logback:logback-classic:1.2.3"
     integrationTestImplementation "commons-io:commons-io:2.6"
