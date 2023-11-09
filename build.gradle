@@ -60,7 +60,7 @@ configurations {
 }
 
 dependencies {
-    api "io.rapidw.mqtt:rapidw-mqtt-codec:0.0.13"
+    api "io.rapidw.mqtt:rapidw-mqtt-codec:0.0.16"
     implementation "org.slf4j:slf4j-api:1.7.30"
     implementation "io.netty:netty-handler:4.1.45.Final"
     implementation "io.netty:netty-transport:4.1.45.Final"
@@ -79,12 +79,13 @@ java {
     withJavadocJar()
     withSourcesJar()
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(8))
     }
 }
 
 license {
     header project.file("gradle/license-header")
+    ext.year = Calendar.getInstance().get(Calendar.YEAR)
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -150,10 +151,7 @@ signing {
 }
 
 nexusPublishing.repositories {
-    sonatype {
-//        username = properties["mavenCentralUsername"]
-//        password = properties["mavenCentralPassword"]
-    }
+    sonatype()
 }
 
 tasks.named("closeAndReleaseSonatypeStagingRepository") {
