@@ -423,7 +423,6 @@ public class MqttConnection {
                 ChannelFuture channelFuture = (ChannelFuture) future;
                 if (future.isSuccess()) {
                     channel = channelFuture.channel();
-                    tcpConnectResultHandler.onSuccess(MqttConnection.this);
                 } else {
                     Throwable cause = future.cause();
                     if (cause instanceof ConnectTimeoutException) {

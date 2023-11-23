@@ -55,10 +55,6 @@ class MosquittoServerSpec extends Specification {
 
 
         connection.connect(new TcpConnectResultHandler() {
-            @Override
-             void onSuccess(MqttConnection connection1) {
-                println "tcp connect success"
-            }
 
             @Override
              void onError(MqttConnection connection1, Throwable throwable) {

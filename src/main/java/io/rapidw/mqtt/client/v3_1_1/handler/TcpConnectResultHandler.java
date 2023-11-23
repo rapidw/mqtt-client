@@ -20,12 +20,6 @@ import io.rapidw.mqtt.client.v3_1_1.MqttConnection;
 public interface TcpConnectResultHandler {
 
     /**
-     * will be called when TCP connection successfully established
-     * @param connection the connection
-     */
-    void onSuccess(MqttConnection connection);
-
-    /**
      * will be called when error occurred during establishing TCP connection
      * @param connection the connection
      * @param cause cause
