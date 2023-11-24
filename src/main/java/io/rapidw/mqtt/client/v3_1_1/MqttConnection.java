@@ -1,12 +1,12 @@
 /**
  * Copyright 2023 Rapidw
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,8 @@ import io.netty.channel.*;
 import io.netty.handler.codec.DecoderException;
 import io.netty.handler.ssl.SslHandshakeCompletionEvent;
 import io.netty.handler.timeout.*;
+import io.netty.util.HashedWheelTimer;
+import io.netty.util.Timeout;
 import io.netty.util.collection.IntObjectHashMap;
 import io.netty.util.concurrent.Promise;
 import io.netty.util.concurrent.ScheduledFuture;
@@ -49,12 +51,15 @@ public class MqttConnection {
     private Channel channel;
     private final IntObjectHashMap<MqttPendingSubscription> pendingSubscriptions = new IntObjectHashMap<>();
     private final IntObjectHashMap<MqttPendingUnsubscription> pendingUnsubscribes = new IntObjectHashMap<>();
-    private final LinkedHashMap<Integer, MqttPendingMessage> pendingMessages = new LinkedHashMap<>();
+    private final LinkedHashMap<Integer, MqttQos1PendingMessage> pendingPublishQos1Messages = new LinkedHashMap<>();
+    private final LinkedHashMap<Integer, MqttQos2PendingMessage> pendingPublishQos2Messages = new LinkedHashMap<>();
+    private final LinkedHashMap<Integer, MqttQos2PendingMessage> pendingReceiveQos2Messages = new LinkedHashMap<>();
     private final MqttTopicTree subscriptionTree = new MqttTopicTree();
     private Handler handler;
     private MqttConnectResultHandler mqttConnectResultHandler;
     private final AtomicInteger currentPacketId = new AtomicInteger();
     private Promise<Void> closePromise;
+    private HashedWheelTimer timer = new HashedWheelTimer(100, TimeUnit.MILLISECONDS, 100);
 
     MqttConnection(Bootstrap bootstrap, MqttConnectionOption connectionOption) {
         this.connectionOption = connectionOption;
@@ -68,7 +73,8 @@ public class MqttConnection {
 
     /**
      * establish connection
-     * @param tcpConnectResultHandler handler for result of TCP connecting
+     *
+     * @param tcpConnectResultHandler  handler for result of TCP connecting
      * @param mqttConnectResultHandler handler for result of MQTT connecting
      */
     public void connect(TcpConnectResultHandler tcpConnectResultHandler, MqttConnectResultHandler mqttConnectResultHandler) {
@@ -82,8 +88,9 @@ public class MqttConnection {
 
     /**
      * subscribe new topic
-     * @param topicAndQosLevels topic and QoS level to subscribe
-     * @param mqttMessageHandler handler for new messages from subscribed topic
+     *
+     * @param topicAndQosLevels      topic and QoS level to subscribe
+     * @param mqttMessageHandler     handler for new messages from subscribed topic
      * @param subscribeResultHandler handler for subscription result
      */
     public void subscribe(List<MqttV311TopicAndQosLevel> topicAndQosLevels, MqttMessageHandler mqttMessageHandler, MqttSubscribeResultHandler subscribeResultHandler) {
@@ -95,8 +102,9 @@ public class MqttConnection {
 
     /**
      * publish message at QoS 0
-     * @param topic topic
-     * @param retain retain
+     *
+     * @param topic   topic
+     * @param retain  retain
      * @param payload payload
      */
     public void publishQos0Message(String topic, boolean retain, byte[] payload) {
@@ -105,9 +113,10 @@ public class MqttConnection {
 
     /**
      * publish message at QoS 0
-     * @param topic topic
-     * @param retain retain
-     * @param payload payload
+     *
+     * @param topic                topic
+     * @param retain               retain
+     * @param payload              payload
      * @param publishResultHandler handler for publish result
      */
     public void publishQos0Message(String topic, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
@@ -116,9 +125,10 @@ public class MqttConnection {
 
     /**
      * publish message at QoS 1
-     * @param topic topic
-     * @param retain retain
-     * @param payload payload
+     *
+     * @param topic                topic
+     * @param retain               retain
+     * @param payload              payload
      * @param publishResultHandler handler for publish result
      */
     public void publishQos1Message(String topic, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
@@ -127,9 +137,10 @@ public class MqttConnection {
 
     /**
      * publish message at QoS 2, NOT supported now.
-     * @param topic topic
-     * @param retain retain
-     * @param payload payload
+     *
+     * @param topic                topic
+     * @param retain               retain
+     * @param payload              payload
      * @param publishResultHandler handler for publish result
      */
     public void publishQos2Message(String topic, boolean retain, byte[] payload, MqttPublishResultHandler publishResultHandler) {
@@ -146,7 +157,8 @@ public class MqttConnection {
     /**
      * unsubscribe a list of subscriptions. No more message will be received if unsubscribe success.Notice: this method is not implemented
      * by iteratively calling {@link #unsubscribe(MqttSubscription, MqttUnsubscribeResultHandler)}
-     * @param subscriptions a list of MQTT subscriptions. You can get one item from {@link MqttSubscribeResultHandler}.
+     *
+     * @param subscriptions            a list of MQTT subscriptions. You can get one item from {@link MqttSubscribeResultHandler}.
      * @param unsubscribeResultHandler handler for unsubscribe result
      */
     public void unsubscribe(List<MqttSubscription> subscriptions, MqttUnsubscribeResultHandler unsubscribeResultHandler) {
@@ -155,7 +167,8 @@ public class MqttConnection {
 
     /**
      * unsubscribe one subscription. No more message will be received if unsubscribe success.
-     * @param subscription MQTT subscription. You can get it from {@link MqttSubscribeResultHandler}.
+     *
+     * @param subscription             MQTT subscription. You can get it from {@link MqttSubscribeResultHandler}.
      * @param unsubscribeResultHandler handler for unsubscribe result
      */
     void unsubscribe(MqttSubscription subscription, MqttUnsubscribeResultHandler unsubscribeResultHandler) {
@@ -183,7 +196,21 @@ public class MqttConnection {
     // ------------------------------------------------------------------------------------------------
 
     private int nextPacketId() {
-        return currentPacketId.accumulateAndGet(1, (current, update) -> (current += update) > 65535 ? 1 : current);
+        return currentPacketId.accumulateAndGet(1, (current, update) -> {
+            int next = findNext(current, update);
+            while (pendingPublishQos1Messages.containsKey(next) || pendingPublishQos2Messages.containsKey(next)) {
+                next = findNext(next, update);
+            }
+            return next;
+        });
+    }
+
+    private int findNext(int current, int update) {
+        int next = current + update;
+        if (next > 65535) {
+            next = 1;
+        }
+        return next;
     }
 
     // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -194,6 +221,7 @@ public class MqttConnection {
 
         @Override
         protected void channelRead0(ChannelHandlerContext ctx, MqttV311Packet packet) {
+            log.debug("receive packet: {}", packet.getType());
             switch (packet.getType()) {
                 case CONNACK:
                     handleConnAck((MqttV311ConnAckPacket) packet);
@@ -211,13 +239,13 @@ public class MqttConnection {
                     handlePubAck((MqttV311PubAckPacket) packet);
                     break;
                 case PUBREC:
-                    //                handlePubRec();
+                    handlePubRec((MqttV311PubRecPacket) packet);
                     break;
                 case PUBREL:
-                    //                handlePubRel();
+                    handlePubRel((MqttV311PubRelPacket) packet);
                     break;
                 case PUBCOMP:
-                    //                handlePubComp();
+                    handlePubComp((MqttV311PubCompPacket) packet);
                     break;
                 case PINGRESP:
                     handlePingResp();
@@ -228,37 +256,118 @@ public class MqttConnection {
         }
 
         private void handlePubAck(MqttV311PubAckPacket packet) {
-
-            MqttPendingMessage pending = pendingMessages.remove(packet.getPacketId());
+            MqttQos1PendingMessage pending = pendingPublishQos1Messages.remove(packet.getPacketId());
             if (pending != null) {
-                if (pending.getQosLevel() == MqttV311QosLevel.AT_LEAST_ONCE) {
-                    pending.getPublishResultHandler().onSuccess(MqttConnection.this);
+                pending.getTimeout().cancel();
+                pending.getPublishResultHandler().onSuccess(MqttConnection.this);
+            } else {
+                throwException(new MqttClientException("invalid packetId in PUBACK packet, pending publish message not found"));
+            }
+        }
+
+        private void handlePubRec(MqttV311PubRecPacket packet) {
+            log.debug("handle PUBREC {}", packet.getPacketId());
+            MqttQos2PendingMessage pending = pendingPublishQos2Messages.get(packet.getPacketId());
+            if (pending != null) {
+                if (pending.getStatus() == MqttQos2PendingMessage.Status.PUBLISH) {
+                    pending.getTimeout().cancel();
+                    MqttV311PubRelPacket pubRelPacket = MqttV311PubRelPacket.builder()
+                        .packetId(packet.getPacketId())
+                        .build();
+                    channel.writeAndFlush(pubRelPacket).addListener(future -> {
+                        if (future.isSuccess()) {
+                            pending.setStatus(MqttQos2PendingMessage.Status.PUBREL);
+                        } else {
+                            throwException(new MqttClientException("send PUBREL packet error", future.cause()));
+                        }
+                    });
                 } else {
-                    throwException(new MqttClientException("message in QoS 2 is UNSUPPORTED!"));
+                    throwException(new MqttClientException("invalid status " + pending.getStatus() + " in qos2 pending publish message"));
                 }
+            } else {
+                throwException(new MqttClientException("invalid packetId in PUBREC packet, pending publish message not found"));
+            }
+        }
+
+        private void handlePubRel(MqttV311PubRelPacket packet) {
+            MqttQos2PendingMessage pending = pendingReceiveQos2Messages.remove(packet.getPacketId());
+            if (pending != null) {
+                MqttV311PubCompPacket pubCompPacket = MqttV311PubCompPacket.builder()
+                    .packetId(packet.getPacketId())
+                    .build();
+                channel.writeAndFlush(pubCompPacket).addListener(future -> {
+                    if (future.isSuccess()) {
+                        pending.getPublishResultHandler().onSuccess(MqttConnection.this);
+                    } else {
+                        throwException(new MqttClientException("send PUBCOMP packet error", future.cause()));
+                    }
+                });
+            } else {
+                throw new MqttClientException("invalid packetId in PUBREL packet, pending receive message not found");
+            }
+        }
+
+        private void handlePubComp(MqttV311PubCompPacket packet) {
+            MqttQos2PendingMessage pending = pendingPublishQos2Messages.remove(packet.getPacketId());
+            if (pending != null) {
+                pending.getTimeout().cancel();
+                pending.getPublishResultHandler().onSuccess(MqttConnection.this);
             } else {
                 throwException(new MqttClientException("invalid packetId in PUBACK packet, pending message not found"));
             }
         }
 
         private void handlePublish(MqttV311PublishPacket packet) {
-            if (packet.getQosLevel() != MqttV311QosLevel.AT_MOST_ONCE) {
-                throw new UnsupportedOperationException("current only QoS 0 message supported");
+            switch (packet.getQosLevel()) {
+                case AT_MOST_ONCE:
+                    handleQos0(packet);
+                    break;
+                case AT_LEAST_ONCE:
+                    handleQos1(packet);
+                    break;
+                case EXACTLY_ONCE:
+                    handleQos2(packet);
+                    break;
             }
+        }
+
+        private void handleQos0(MqttV311PublishPacket packet) {
             Set<MqttMessageHandler> handlers = subscriptionTree.getHandlersByTopicName(packet.getTopic());
             if (handlers.isEmpty()) {
                 throwException(new MqttClientException("PUBLISH packet without message handler received, topic: " + packet.getTopic()));
             }
-            for (MqttMessageHandler handler: handlers) {
+            for (MqttMessageHandler handler : handlers) {
                 handler.onMessage(MqttConnection.this, packet.getTopic(), packet.getQosLevel(), packet.isRetain(), packet.isDupFlag(), packet.getPacketId(), packet.getPayload());
             }
-            if (packet.getQosLevel() == MqttV311QosLevel.AT_LEAST_ONCE) {
-                pubAck(packet.getPacketId());
+        }
+
+        private void handleQos1(MqttV311PublishPacket packet) {
+            pubAck(packet.getPacketId());
+            handleQos0(packet);
+        }
+
+        public void handleQos2(MqttV311PublishPacket packet) {
+            MqttQos2PendingMessage pending = pendingReceiveQos2Messages.get(packet.getPacketId());
+            if (pending != null) {
+                if (pending.getStatus() == MqttQos2PendingMessage.Status.PUBREC) {
+                    // retransmit is allowed only when status is PUBREC
+                    pending.setPacket(packet);
+                    pubRec(packet.getPacketId());
+                } else {
+                    throw new MqttClientException("invalid retransmit when status " + pending.getStatus() + " in qos2 pending receive message");
+                }
+            } else {
+                pending = MqttQos2PendingMessage.builder()
+                    .packet(packet)
+                    .publishResultHandler(null)
+                    .status(MqttQos2PendingMessage.Status.PUBREC)
+                    .build();
+                pendingReceiveQos2Messages.put(packet.getPacketId(), pending);
+                pubRec(packet.getPacketId());
             }
         }
 
         private void handleSubAck(MqttV311SubAckPacket packet) {
-
             MqttPendingSubscription pending = pendingSubscriptions.remove(packet.getPacketId());
             if (pending != null) {
                 List<MqttV311TopicAndQosLevel> topicAndQosLevels = pending.getTopicAndQosLevels();
@@ -324,7 +433,7 @@ public class MqttConnection {
 
             MqttPendingUnsubscription pending = pendingUnsubscribes.remove(packet.getPacketId());
             if (pending != null) {
-                for (String topicFilter: pending.getTopicFilters()) {
+                for (String topicFilter : pending.getTopicFilters()) {
                     subscriptionTree.removeSubscription(topicFilter);
                 }
                 pending.getUnsubscribeResultHandler().onSuccess(MqttConnection.this);
@@ -460,51 +569,92 @@ public class MqttConnection {
         }
 
         public void publish(String topic, MqttV311QosLevel qosLevel, boolean retain, byte[] payload, MqttPublishResultHandler mqttPublishResultHandler) {
-            if (qosLevel == MqttV311QosLevel.EXACTLY_ONCE) {
-                throw new UnsupportedOperationException("publish with qos1 or qos2 current unsupported");
-            }
-            int packetId = 0;
+
             MqttV311PublishPacket.Builder builder = MqttV311PublishPacket.builder()
                 .topic(topic)
                 .qosLevel(qosLevel)
                 .dupFlag(false)
                 .retain(retain)
                 .payload(payload);
-            if (qosLevel == MqttV311QosLevel.AT_LEAST_ONCE) {
+            int packetId;
+            if (qosLevel == MqttV311QosLevel.AT_LEAST_ONCE || qosLevel == MqttV311QosLevel.EXACTLY_ONCE) {
                 packetId = nextPacketId();
                 builder.packetId(packetId);
+            } else {
+                packetId = 0;
             }
 
-            int finalPacketId = packetId;
+            log.debug("new publish packetId {}", packetId);
             MqttV311PublishPacket packet = builder.build();
             channel.writeAndFlush(packet).addListener(future -> {
-
-                if (qosLevel == MqttV311QosLevel.AT_MOST_ONCE) {
-                    if ( mqttPublishResultHandler != null) {
-                        if (future.isSuccess()) {
-                            mqttPublishResultHandler.onSuccess(MqttConnection.this);
-                        } else {
-                            mqttPublishResultHandler.onError(MqttConnection.this, future.cause());
-                        }
+                if (future.isSuccess()) {
+                    switch (qosLevel) {
+                        case AT_MOST_ONCE:
+                            if (mqttPublishResultHandler != null) {
+                                mqttPublishResultHandler.onSuccess(MqttConnection.this);
+                            }
+                            break;
+                        case AT_LEAST_ONCE:
+                            pendingPublishQos1Messages.put(packetId, MqttQos1PendingMessage.builder()
+                                .packet(packet)
+                                .publishResultHandler(mqttPublishResultHandler)
+                                .timeout(timer.newTimeout(timeout -> retransmitQos1(packetId),
+                                    connectionOption.getMqttPubAckTimeout(), TimeUnit.SECONDS)
+                                )
+                                .build()
+                            );
+                            break;
+                        case EXACTLY_ONCE:
+                            pendingPublishQos2Messages.put(packetId, MqttQos2PendingMessage.builder()
+                                .packet(packet)
+                                .publishResultHandler(mqttPublishResultHandler)
+                                .status(MqttQos2PendingMessage.Status.PUBLISH)
+                                .timeout(timer.newTimeout(timeout -> retransmitQos2(packetId),
+                                    connectionOption.getMqttPubRecTimeout(), TimeUnit.SECONDS)
+                                )
+                                .build()
+                            );
+                            break;
                     }
                 } else {
-                    if (future.isSuccess()) {
-                        pendingMessages.put(finalPacketId, MqttPendingMessage.builder()
-                            .packet(packet)
-                            .publishResultHandler(mqttPublishResultHandler)
-                            .qosLevel(qosLevel)
-                            .build());
-                        // todo： add timer for qos1/2
-                    } else {
-                        mqttPublishResultHandler.onError(MqttConnection.this, future.cause());
-                    }
+                    mqttPublishResultHandler.onError(MqttConnection.this, future.cause());
                 }
+
             });
+        }
+
+        private void retransmitQos1(int packetId) {
+            MqttQos1PendingMessage pending = pendingPublishQos1Messages.get(packetId);
+            if (pending != null) {
+                channel.writeAndFlush(makeDupPacket(pending.getPacket()));
+                pending.setTimeout(timer.newTimeout(timeout2 -> retransmitQos2(packetId),
+                    connectionOption.getMqttPubRecTimeout(), TimeUnit.SECONDS));
+            }
+        }
+
+        private void retransmitQos2(int packetId) {
+            MqttQos2PendingMessage pending = pendingPublishQos2Messages.get(packetId);
+            if (pending != null) {
+                channel.writeAndFlush(makeDupPacket(pending.getPacket()));
+                pending.setTimeout(timer.newTimeout(timeout2 -> retransmitQos2(packetId),
+                    connectionOption.getMqttPubRecTimeout(), TimeUnit.SECONDS));
+            }
+        }
+
+        private MqttV311PublishPacket makeDupPacket(MqttV311PublishPacket packet) {
+            return MqttV311PublishPacket.builder()
+                .topic(packet.getTopic())
+                .retain(packet.isRetain())
+                .qosLevel(packet.getQosLevel())
+                .payload(packet.getPayload())
+                .packetId(packet.getPacketId())
+                .dupFlag(true)
+                .build();
         }
 
         private void pingReq(Channel channel) {
             if (this.pingRespTimeoutFuture == null) {
-                this.pingRespTimeoutFuture = channel.eventLoop().schedule( () -> {
+                this.pingRespTimeoutFuture = channel.eventLoop().schedule(() -> {
                     channel.writeAndFlush(MqttV311DisconnectPacket.INSTANCE).addListener(ChannelFutureListener.CLOSE);
                 }, connectionOption.getKeepAliveSeconds(), TimeUnit.SECONDS);
             }
@@ -545,7 +695,25 @@ public class MqttConnection {
 
         public void pubAck(int packetId) {
             MqttV311PubAckPacket packet = MqttV311PubAckPacket.builder().packetId(packetId).build();
-            channel.writeAndFlush(packet).addListener( future -> {
+            channel.writeAndFlush(packet).addListener(future -> {
+                if (!future.isSuccess()) {
+                    throwException(future.cause());
+                }
+            });
+        }
+
+        public void pubRec(int packetId) {
+            MqttV311PubRecPacket packet = MqttV311PubRecPacket.builder().packetId(packetId).build();
+            channel.writeAndFlush(packet).addListener(future -> {
+                if (!future.isSuccess()) {
+                    throwException(future.cause());
+                }
+            });
+        }
+
+        public void pubComp(int packetId) {
+            MqttV311PubCompPacket packet = MqttV311PubCompPacket.builder().packetId(packetId).build();
+            channel.writeAndFlush(packet).addListener(future -> {
                 if (!future.isSuccess()) {
                     throwException(future.cause());
                 }
@@ -554,6 +722,7 @@ public class MqttConnection {
 
         /**
          * called when exception happens
+         *
          * @param cause cause
          */
         private void throwException(Throwable cause) {

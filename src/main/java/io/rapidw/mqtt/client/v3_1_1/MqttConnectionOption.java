@@ -35,16 +35,19 @@ public class MqttConnectionOption {
 
     private final byte[] serverCertificate;
     private final byte[] clientCertificate;
-    private final long tcpConnectTimeout;
-    private final long mqttConnectTimeout;
-
+    private final int tcpConnectTimeout;
+    private final int mqttConnectTimeout;
 
     private final MqttExceptionHandler exceptionHandler;
+
+    private final int mqttPubAckTimeout;
+    private final int mqttPubRecTimeout;
+    private final int mqttPubCompTimeout;
 
     MqttConnectionOption(String host, int port, String username, byte[] password, MqttV311Will will, boolean cleanSession,
                          int keepAliveSeconds, String clientId, byte[] serverCertificate, byte[] clientCertificate,
                          int tcpConnectTimeout, TimeUnit tcpConnectTimeoutTimeUnit, int mqttConnectTimeout, TimeUnit mqttConnectTimeoutTimeUnit,
-                         MqttExceptionHandler exceptionHandler) {
+                         MqttExceptionHandler exceptionHandler, int mqttPubAckTimeout, int mqttPubRecTimeout, int mqttPubCompTimeout) {
 
         this.host = Objects.requireNonNull(host);
         this.port = port;
@@ -63,7 +66,7 @@ public class MqttConnectionOption {
             throw new MqttClientException("invalid tcpConnectTimeout");
         }
         if (tcpConnectTimeoutTimeUnit != null) {
-            this.tcpConnectTimeout = TimeUnit.MILLISECONDS.convert(tcpConnectTimeout, tcpConnectTimeoutTimeUnit);
+            this.tcpConnectTimeout = (int) TimeUnit.MILLISECONDS.convert(tcpConnectTimeout, tcpConnectTimeoutTimeUnit);
         } else {
             throw new MqttClientException("tcpConnectTimeoutTimeUnit required");
         }
@@ -71,11 +74,14 @@ public class MqttConnectionOption {
             throw new MqttClientException("invalid mqttConnectTimeout");
         }
         if (mqttConnectTimeoutTimeUnit != null) {
-            this.mqttConnectTimeout = TimeUnit.MILLISECONDS.convert(mqttConnectTimeout, mqttConnectTimeoutTimeUnit);
+            this.mqttConnectTimeout = (int) TimeUnit.MILLISECONDS.convert(mqttConnectTimeout, mqttConnectTimeoutTimeUnit);
         } else {
             throw new MqttClientException("mqttConnectTimeoutTimeUnit required");
         }
         this.exceptionHandler = Objects.requireNonNull(exceptionHandler);
+        this.mqttPubAckTimeout = mqttPubAckTimeout;
+        this.mqttPubRecTimeout = mqttPubRecTimeout;
+        this.mqttPubCompTimeout = mqttPubCompTimeout;
     }
 
     public static MqttConnectionOptionBuilder builder() {
@@ -122,17 +128,28 @@ public class MqttConnectionOption {
         return this.clientCertificate;
     }
 
-    public long getTcpConnectTimeout() {
+    public int getTcpConnectTimeout() {
         return this.tcpConnectTimeout;
     }
 
-    public long getMqttConnectTimeout() {
+    public int getMqttConnectTimeout() {
         return this.mqttConnectTimeout;
     }
 
-
     public MqttExceptionHandler getExceptionHandler() {
         return this.exceptionHandler;
+    }
+
+    public int getMqttPubAckTimeout() {
+        return this.mqttPubAckTimeout;
+    }
+
+    public int getMqttPubRecTimeout() {
+        return this.mqttPubRecTimeout;
+    }
+
+    public int getMqttPubCompTimeout() {
+        return this.mqttPubCompTimeout;
     }
 
     public static class MqttConnectionOptionBuilder {
@@ -151,6 +168,9 @@ public class MqttConnectionOption {
         private int mqttConnectTimeout;
         private TimeUnit mqttConnectTimeoutTimeUnit;
         private MqttExceptionHandler exceptionHandler;
+        private int mqttPubAckTimeout;
+        private int mqttPubRecTimeout;
+        private int mqttPubCompTimeout;
 
         MqttConnectionOptionBuilder() {
         }
@@ -242,10 +262,26 @@ public class MqttConnectionOption {
             return this;
         }
 
+        public MqttConnectionOption.MqttConnectionOptionBuilder mqttPubAckTimeout(int mqttPubAckTimeout) {
+            this.mqttPubAckTimeout = mqttPubAckTimeout;
+            return this;
+        }
+
+        public MqttConnectionOption.MqttConnectionOptionBuilder mqttPubRecTimeout(int mqttPubRecTimeout) {
+            this.mqttPubRecTimeout = mqttPubRecTimeout;
+            return this;
+        }
+
+        public MqttConnectionOption.MqttConnectionOptionBuilder mqttPubCompTimeout(int mqttPubCompTimeout) {
+            this.mqttPubCompTimeout = mqttPubCompTimeout;
+            return this;
+        }
+
         public MqttConnectionOption build() {
             return new MqttConnectionOption(host, port, username, password, will, cleanSession, keepAliveSeconds,
                 clientId, serverCertificate, clientCertificate, tcpConnectTimeout,
-                tcpConnectTimeoutTimeUnit, mqttConnectTimeout, mqttConnectTimeoutTimeUnit, exceptionHandler);
+                tcpConnectTimeoutTimeUnit, mqttConnectTimeout, mqttConnectTimeoutTimeUnit, exceptionHandler,
+                mqttPubAckTimeout, mqttPubRecTimeout, mqttPubCompTimeout);
         }
     }
 }

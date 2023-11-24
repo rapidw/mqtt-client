@@ -15,23 +15,25 @@
  */
 package io.rapidw.mqtt.client.v3_1_1;
 
+import io.netty.util.Timeout;
 import io.rapidw.mqtt.client.v3_1_1.handler.MqttPublishResultHandler;
 import io.rapidw.mqtt.codec.v3_1_1.MqttV311PublishPacket;
 import io.rapidw.mqtt.codec.v3_1_1.MqttV311QosLevel;
 
-class MqttPendingMessage {
+class MqttQos1PendingMessage {
     private final MqttV311PublishPacket packet;
     private final MqttPublishResultHandler publishResultHandler;
-    private final MqttV311QosLevel qosLevel;
+    private Timeout timeout;
 
-    MqttPendingMessage(MqttV311PublishPacket packet, MqttPublishResultHandler publishResultHandler, MqttV311QosLevel qosLevel) {
+    MqttQos1PendingMessage(MqttV311PublishPacket packet, MqttPublishResultHandler publishResultHandler,
+                           Timeout timeout) {
         this.packet = packet;
         this.publishResultHandler = publishResultHandler;
-        this.qosLevel = qosLevel;
+        this.timeout = timeout;
     }
 
-    public static MqttPendingMessageBuilder builder() {
-        return new MqttPendingMessageBuilder();
+    public static MqttQos1PendingMessageBuilder builder() {
+        return new MqttQos1PendingMessageBuilder();
     }
 
     public MqttV311PublishPacket getPacket() {
@@ -42,36 +44,39 @@ class MqttPendingMessage {
         return this.publishResultHandler;
     }
 
-    public MqttV311QosLevel getQosLevel() {
-        return this.qosLevel;
+    public void setTimeout(Timeout timeout) {
+        this.timeout = timeout;
     }
 
-    public static class MqttPendingMessageBuilder {
-        private MqttV311PublishPacket packet;
-        private MqttPublishResultHandler publishResultHandler;
-        private MqttV311QosLevel qosLevel;
+    public Timeout getTimeout() {
+        return this.timeout;
+    }
 
-        MqttPendingMessageBuilder() {
+    public static class MqttQos1PendingMessageBuilder {
+        MqttV311PublishPacket packet;
+        MqttPublishResultHandler publishResultHandler;
+        Timeout timeout;
+
+        MqttQos1PendingMessageBuilder() {
         }
 
-        public MqttPendingMessage.MqttPendingMessageBuilder packet(MqttV311PublishPacket packet) {
+        public MqttQos1PendingMessage.MqttQos1PendingMessageBuilder packet(MqttV311PublishPacket packet) {
             this.packet = packet;
             return this;
         }
 
-        public MqttPendingMessage.MqttPendingMessageBuilder publishResultHandler(MqttPublishResultHandler publishResultHandler) {
+        public MqttQos1PendingMessage.MqttQos1PendingMessageBuilder publishResultHandler(MqttPublishResultHandler publishResultHandler) {
             this.publishResultHandler = publishResultHandler;
             return this;
         }
 
-        public MqttPendingMessage.MqttPendingMessageBuilder qosLevel(MqttV311QosLevel qosLevel) {
-            this.qosLevel = qosLevel;
+        public MqttQos1PendingMessage.MqttQos1PendingMessageBuilder timeout(Timeout timeout) {
+            this.timeout = timeout;
             return this;
         }
 
-        public MqttPendingMessage build() {
-            return new MqttPendingMessage(packet, publishResultHandler, qosLevel);
+        public MqttQos1PendingMessage build() {
+            return new MqttQos1PendingMessage(packet, publishResultHandler, timeout);
         }
-
     }
 }
