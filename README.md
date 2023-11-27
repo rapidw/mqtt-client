@@ -18,11 +18,11 @@ a fully asynchronous client for MQTT 3.1.1 based on [Rapidw MQTT Codec](https://
 - [x] Sending PUBLISH
     * [x] QoS 0
     * [x] QoS 1
-    * [ ] QoS 2
+    * [x] QoS 2
 - [x] Receiving PUBLISH
     * [x] QoS 0
-    * [ ] QoS 1
-    * [ ] QoS 2
+    * [x] QoS 1
+    * [x] QoS 2
 - [x] Automatic PINGREQ/PINGRESP
 - [x] DISCONNECT
 - [ ] Automatic Reconnect
