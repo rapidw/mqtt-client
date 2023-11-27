@@ -40,14 +40,32 @@ public class MqttConnectionOption {
 
     private final MqttExceptionHandler exceptionHandler;
 
-    private final int mqttPubAckTimeout;
-    private final int mqttPubRecTimeout;
-    private final int mqttPubCompTimeout;
+    /**
+     * @see MqttConnectionOptionBuilder#mqttPubAckTimeout(int)
+     */
+    private final int pubAckTimeout;
+    /**
+     * @see MqttConnectionOptionBuilder#mqttPubRecTimeout(int)
+     */
+    private final int pubRecTimeout;
+    /**
+     * @see MqttConnectionOptionBuilder#mqttPubRelTimeout(int)
+     */
+    private final int pubCompTimeout;
+    /**
+     * @see MqttConnectionOptionBuilder#mqttPubCompTimeout(int)
+     */
+    private final int pubRelTimeout;
+    /**
+     * @see MqttConnectionOptionBuilder#retransmitMax(int)
+     */
+    private final int retransmitMax;
 
     MqttConnectionOption(String host, int port, String username, byte[] password, MqttV311Will will, boolean cleanSession,
                          int keepAliveSeconds, String clientId, byte[] serverCertificate, byte[] clientCertificate,
                          int tcpConnectTimeout, TimeUnit tcpConnectTimeoutTimeUnit, int mqttConnectTimeout, TimeUnit mqttConnectTimeoutTimeUnit,
-                         MqttExceptionHandler exceptionHandler, int mqttPubAckTimeout, int mqttPubRecTimeout, int mqttPubCompTimeout) {
+                         MqttExceptionHandler exceptionHandler, int pubAckTimeout, int pubRecTimeout, int pubRelTimeout, int pubCompTimeout,
+                         int retransmitMax) {
 
         this.host = Objects.requireNonNull(host);
         this.port = port;
@@ -79,9 +97,11 @@ public class MqttConnectionOption {
             throw new MqttClientException("mqttConnectTimeoutTimeUnit required");
         }
         this.exceptionHandler = Objects.requireNonNull(exceptionHandler);
-        this.mqttPubAckTimeout = mqttPubAckTimeout;
-        this.mqttPubRecTimeout = mqttPubRecTimeout;
-        this.mqttPubCompTimeout = mqttPubCompTimeout;
+        this.pubAckTimeout = pubAckTimeout;
+        this.pubRecTimeout = pubRecTimeout;
+        this.pubRelTimeout = pubRelTimeout;
+        this.pubCompTimeout = pubCompTimeout;
+        this.retransmitMax = retransmitMax;
     }
 
     public static MqttConnectionOptionBuilder builder() {
@@ -140,16 +160,24 @@ public class MqttConnectionOption {
         return this.exceptionHandler;
     }
 
-    public int getMqttPubAckTimeout() {
-        return this.mqttPubAckTimeout;
+    public int getPubAckTimeout() {
+        return this.pubAckTimeout;
     }
 
-    public int getMqttPubRecTimeout() {
-        return this.mqttPubRecTimeout;
+    public int getPubRecTimeout() {
+        return this.pubRecTimeout;
     }
 
-    public int getMqttPubCompTimeout() {
-        return this.mqttPubCompTimeout;
+    public int getPubRelTimeout() {
+        return this.pubRelTimeout;
+    }
+
+    public int getPubCompTimeout() {
+        return this.pubCompTimeout;
+    }
+
+    public int getRetransmitMax() {
+        return this.retransmitMax;
     }
 
     public static class MqttConnectionOptionBuilder {
@@ -168,9 +196,12 @@ public class MqttConnectionOption {
         private int mqttConnectTimeout;
         private TimeUnit mqttConnectTimeoutTimeUnit;
         private MqttExceptionHandler exceptionHandler;
-        private int mqttPubAckTimeout;
-        private int mqttPubRecTimeout;
-        private int mqttPubCompTimeout;
+        private int pubAckTimeout;
+        private int pubRecTimeout;
+        private int pubRelTimeout;
+        private int pubCompTimeout;
+
+        private int retransmitMax;
 
         MqttConnectionOptionBuilder() {
         }
@@ -262,18 +293,48 @@ public class MqttConnectionOption {
             return this;
         }
 
-        public MqttConnectionOption.MqttConnectionOptionBuilder mqttPubAckTimeout(int mqttPubAckTimeout) {
-            this.mqttPubAckTimeout = mqttPubAckTimeout;
+        /**
+         * set timeout for TX PUBLISH packet and PUBACK packet, if no PUBACK received in this time, message will be retransmitted
+         * @param pubAckTimeout timeout in seconds
+         * @return this
+         */
+        public MqttConnectionOption.MqttConnectionOptionBuilder mqttPubAckTimeout(int pubAckTimeout) {
+            this.pubAckTimeout = pubAckTimeout;
             return this;
         }
 
-        public MqttConnectionOption.MqttConnectionOptionBuilder mqttPubRecTimeout(int mqttPubRecTimeout) {
-            this.mqttPubRecTimeout = mqttPubRecTimeout;
+        /**
+         * set timeout for TX PUBLISH packet and PUBREC packet, if no PUBREC received in this time, message will be retransmitted
+         * @param pubRecTimeout timeout in seconds
+         * @return this
+         */
+        public MqttConnectionOption.MqttConnectionOptionBuilder mqttPubRecTimeout(int pubRecTimeout) {
+            this.pubRecTimeout = pubRecTimeout;
             return this;
         }
 
-        public MqttConnectionOption.MqttConnectionOptionBuilder mqttPubCompTimeout(int mqttPubCompTimeout) {
-            this.mqttPubCompTimeout = mqttPubCompTimeout;
+        /**
+         * set timeout for RX PUBREC packet and PUBREL packet, if no PUBREL received in this time, exception will be thrown
+         * @param pubRelTimeout timeout in seconds
+         * @return this
+         */
+        public MqttConnectionOption.MqttConnectionOptionBuilder mqttPubRelTimeout(int pubRelTimeout) {
+            this.pubRelTimeout = pubRelTimeout;
+            return this;
+        }
+
+        /**
+         * set timeout for TX PUBREL packet and PUBCOMP packet, if no PUBCOMP received in this time, exception will be thrown
+         * @param pubCompTimeout timeout in seconds
+         * @return this
+         */
+        public MqttConnectionOption.MqttConnectionOptionBuilder mqttPubCompTimeout(int pubCompTimeout) {
+            this.pubCompTimeout = pubCompTimeout;
+            return this;
+        }
+
+        public MqttConnectionOption.MqttConnectionOptionBuilder retransmitMax(int retransmitMax) {
+            this.retransmitMax = retransmitMax;
             return this;
         }
 
@@ -281,7 +342,7 @@ public class MqttConnectionOption {
             return new MqttConnectionOption(host, port, username, password, will, cleanSession, keepAliveSeconds,
                 clientId, serverCertificate, clientCertificate, tcpConnectTimeout,
                 tcpConnectTimeoutTimeUnit, mqttConnectTimeout, mqttConnectTimeoutTimeUnit, exceptionHandler,
-                mqttPubAckTimeout, mqttPubRecTimeout, mqttPubCompTimeout);
+                pubAckTimeout, pubRecTimeout, pubRelTimeout, pubCompTimeout, retransmitMax);
         }
     }
 }

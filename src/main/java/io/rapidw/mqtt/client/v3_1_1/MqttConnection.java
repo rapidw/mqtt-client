@@ -1,12 +1,12 @@
 /**
  * Copyright 2023 Rapidw
- * <p>
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p>
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,7 +22,6 @@ import io.netty.handler.codec.DecoderException;
 import io.netty.handler.ssl.SslHandshakeCompletionEvent;
 import io.netty.handler.timeout.*;
 import io.netty.util.HashedWheelTimer;
-import io.netty.util.Timeout;
 import io.netty.util.collection.IntObjectHashMap;
 import io.netty.util.concurrent.Promise;
 import io.netty.util.concurrent.ScheduledFuture;
@@ -51,15 +50,15 @@ public class MqttConnection {
     private Channel channel;
     private final IntObjectHashMap<MqttPendingSubscription> pendingSubscriptions = new IntObjectHashMap<>();
     private final IntObjectHashMap<MqttPendingUnsubscription> pendingUnsubscribes = new IntObjectHashMap<>();
-    private final LinkedHashMap<Integer, MqttQos1PendingMessage> pendingPublishQos1Messages = new LinkedHashMap<>();
-    private final LinkedHashMap<Integer, MqttQos2PendingMessage> pendingPublishQos2Messages = new LinkedHashMap<>();
-    private final LinkedHashMap<Integer, MqttQos2PendingMessage> pendingReceiveQos2Messages = new LinkedHashMap<>();
+    private final LinkedHashMap<Integer, MqttQos1TxMessage> pendingTxQos1Messages = new LinkedHashMap<>();
+    private final LinkedHashMap<Integer, MqttQos2TxMessage> pendingTxQos2Messages = new LinkedHashMap<>();
+    private final LinkedHashMap<Integer, MqttQos2RxMessage> pendingRxQos2Messages = new LinkedHashMap<>();
     private final MqttTopicTree subscriptionTree = new MqttTopicTree();
     private Handler handler;
     private MqttConnectResultHandler mqttConnectResultHandler;
     private final AtomicInteger currentPacketId = new AtomicInteger();
     private Promise<Void> closePromise;
-    private HashedWheelTimer timer = new HashedWheelTimer(100, TimeUnit.MILLISECONDS, 100);
+    private final HashedWheelTimer timer = new HashedWheelTimer(100, TimeUnit.MILLISECONDS, 100);
 
     MqttConnection(Bootstrap bootstrap, MqttConnectionOption connectionOption) {
         this.connectionOption = connectionOption;
@@ -198,7 +197,7 @@ public class MqttConnection {
     private int nextPacketId() {
         return currentPacketId.accumulateAndGet(1, (current, update) -> {
             int next = findNext(current, update);
-            while (pendingPublishQos1Messages.containsKey(next) || pendingPublishQos2Messages.containsKey(next)) {
+            while (pendingTxQos1Messages.containsKey(next) || pendingTxQos2Messages.containsKey(next)) {
                 next = findNext(next, update);
             }
             return next;
@@ -255,8 +254,9 @@ public class MqttConnection {
             }
         }
 
+        // qos 1 tx stage 1
         private void handlePubAck(MqttV311PubAckPacket packet) {
-            MqttQos1PendingMessage pending = pendingPublishQos1Messages.remove(packet.getPacketId());
+            MqttQos1TxMessage pending = pendingTxQos1Messages.remove(packet.getPacketId());
             if (pending != null) {
                 pending.getTimeout().cancel();
                 pending.getPublishResultHandler().onSuccess(MqttConnection.this);
@@ -265,22 +265,17 @@ public class MqttConnection {
             }
         }
 
+        // qos 2 tx stage 1
         private void handlePubRec(MqttV311PubRecPacket packet) {
             log.debug("handle PUBREC {}", packet.getPacketId());
-            MqttQos2PendingMessage pending = pendingPublishQos2Messages.get(packet.getPacketId());
+            MqttQos2TxMessage pending = pendingTxQos2Messages.get(packet.getPacketId());
             if (pending != null) {
-                if (pending.getStatus() == MqttQos2PendingMessage.Status.PUBLISH) {
+                if (pending.getStatus() == MqttQos2TxMessage.Status.PUBLISH) {
                     pending.getTimeout().cancel();
-                    MqttV311PubRelPacket pubRelPacket = MqttV311PubRelPacket.builder()
-                        .packetId(packet.getPacketId())
-                        .build();
-                    channel.writeAndFlush(pubRelPacket).addListener(future -> {
-                        if (future.isSuccess()) {
-                            pending.setStatus(MqttQos2PendingMessage.Status.PUBREL);
-                        } else {
-                            throwException(new MqttClientException("send PUBREL packet error", future.cause()));
-                        }
-                    });
+                    pubRel(packet.getPacketId());
+                    pending.setStatus(MqttQos2TxMessage.Status.PUBREL);
+                    pending.setTimeout(timer.newTimeout(timeout -> throwException(new MqttClientException("PUBCOMP timeout")),
+                        connectionOption.getPubCompTimeout(), TimeUnit.SECONDS));
                 } else {
                     throwException(new MqttClientException("invalid status " + pending.getStatus() + " in qos2 pending publish message"));
                 }
@@ -289,27 +284,22 @@ public class MqttConnection {
             }
         }
 
+        // qos 2 rx stage 2
         private void handlePubRel(MqttV311PubRelPacket packet) {
-            MqttQos2PendingMessage pending = pendingReceiveQos2Messages.remove(packet.getPacketId());
+            MqttQos2RxMessage pending = pendingRxQos2Messages.remove(packet.getPacketId());
             if (pending != null) {
-                MqttV311PubCompPacket pubCompPacket = MqttV311PubCompPacket.builder()
-                    .packetId(packet.getPacketId())
-                    .build();
-                channel.writeAndFlush(pubCompPacket).addListener(future -> {
-                    if (future.isSuccess()) {
-                        pending.getPublishResultHandler().onSuccess(MqttConnection.this);
-                    } else {
-                        throwException(new MqttClientException("send PUBCOMP packet error", future.cause()));
-                    }
-                });
+                pending.getTimeout().cancel();
+                pubComp(packet.getPacketId());
+                handleSubscriptions(pending.getPacket());
             } else {
-                throw new MqttClientException("invalid packetId in PUBREL packet, pending receive message not found");
+                throwException(new MqttClientException("invalid packetId in PUBREL packet, pending receive message not found"));
             }
         }
 
+        // qos 2 tx stage 2
         private void handlePubComp(MqttV311PubCompPacket packet) {
-            MqttQos2PendingMessage pending = pendingPublishQos2Messages.remove(packet.getPacketId());
-            if (pending != null) {
+            MqttQos2TxMessage pending = pendingTxQos2Messages.remove(packet.getPacketId());
+            if (pending != null && pending.getStatus() == MqttQos2TxMessage.Status.PUBREL) {
                 pending.getTimeout().cancel();
                 pending.getPublishResultHandler().onSuccess(MqttConnection.this);
             } else {
@@ -320,51 +310,54 @@ public class MqttConnection {
         private void handlePublish(MqttV311PublishPacket packet) {
             switch (packet.getQosLevel()) {
                 case AT_MOST_ONCE:
-                    handleQos0(packet);
+                    handlePublishQos0(packet);
                     break;
                 case AT_LEAST_ONCE:
-                    handleQos1(packet);
+                    handlePublishQos1(packet);
                     break;
                 case EXACTLY_ONCE:
-                    handleQos2(packet);
+                    handlePublishQos2(packet);
                     break;
             }
         }
 
-        private void handleQos0(MqttV311PublishPacket packet) {
+        private void handleSubscriptions(MqttV311PublishPacket packet) {
             Set<MqttMessageHandler> handlers = subscriptionTree.getHandlersByTopicName(packet.getTopic());
             if (handlers.isEmpty()) {
                 throwException(new MqttClientException("PUBLISH packet without message handler received, topic: " + packet.getTopic()));
             }
             for (MqttMessageHandler handler : handlers) {
-                handler.onMessage(MqttConnection.this, packet.getTopic(), packet.getQosLevel(), packet.isRetain(), packet.isDupFlag(), packet.getPacketId(), packet.getPayload());
+                handler.onMessage(MqttConnection.this, packet.getTopic(), packet.getQosLevel(),
+                    packet.isRetain(), packet.isDupFlag(), packet.getPacketId(), packet.getPayload());
             }
         }
 
-        private void handleQos1(MqttV311PublishPacket packet) {
+        private void handlePublishQos0(MqttV311PublishPacket packet) {
+            handleSubscriptions(packet);
+        }
+
+        // qos 1 rx stage 1
+        private void handlePublishQos1(MqttV311PublishPacket packet) {
             pubAck(packet.getPacketId());
-            handleQos0(packet);
+            handleSubscriptions(packet);
         }
 
-        public void handleQos2(MqttV311PublishPacket packet) {
-            MqttQos2PendingMessage pending = pendingReceiveQos2Messages.get(packet.getPacketId());
+        // qos 2 rx stage 1
+        public void handlePublishQos2(MqttV311PublishPacket packet) {
+            MqttQos2RxMessage pending = pendingRxQos2Messages.get(packet.getPacketId());
             if (pending != null) {
-                if (pending.getStatus() == MqttQos2PendingMessage.Status.PUBREC) {
-                    // retransmit is allowed only when status is PUBREC
-                    pending.setPacket(packet);
-                    pubRec(packet.getPacketId());
-                } else {
-                    throw new MqttClientException("invalid retransmit when status " + pending.getStatus() + " in qos2 pending receive message");
-                }
+                // retransmit is allowed only when status is PUBREC
+                pending.getTimeout().cancel();
+                pending.setPacket(packet);
             } else {
-                pending = MqttQos2PendingMessage.builder()
+                pending = MqttQos2RxMessage.builder()
                     .packet(packet)
-                    .publishResultHandler(null)
-                    .status(MqttQos2PendingMessage.Status.PUBREC)
                     .build();
-                pendingReceiveQos2Messages.put(packet.getPacketId(), pending);
-                pubRec(packet.getPacketId());
+                pendingRxQos2Messages.put(packet.getPacketId(), pending);
             }
+            pubRec(packet.getPacketId());
+            pending.setTimeout(timer.newTimeout(timeout -> throwException(new MqttClientException("PUBREL timeout")),
+                connectionOption.getPubRelTimeout(), TimeUnit.SECONDS));
         }
 
         private void handleSubAck(MqttV311SubAckPacket packet) {
@@ -595,22 +588,22 @@ public class MqttConnection {
                             }
                             break;
                         case AT_LEAST_ONCE:
-                            pendingPublishQos1Messages.put(packetId, MqttQos1PendingMessage.builder()
+                            pendingTxQos1Messages.put(packetId, MqttQos1TxMessage.builder()
                                 .packet(packet)
                                 .publishResultHandler(mqttPublishResultHandler)
                                 .timeout(timer.newTimeout(timeout -> retransmitQos1(packetId),
-                                    connectionOption.getMqttPubAckTimeout(), TimeUnit.SECONDS)
+                                    connectionOption.getPubAckTimeout(), TimeUnit.SECONDS)
                                 )
                                 .build()
                             );
                             break;
                         case EXACTLY_ONCE:
-                            pendingPublishQos2Messages.put(packetId, MqttQos2PendingMessage.builder()
+                            pendingTxQos2Messages.put(packetId, MqttQos2TxMessage.builder()
                                 .packet(packet)
                                 .publishResultHandler(mqttPublishResultHandler)
-                                .status(MqttQos2PendingMessage.Status.PUBLISH)
+                                .status(MqttQos2TxMessage.Status.PUBLISH)
                                 .timeout(timer.newTimeout(timeout -> retransmitQos2(packetId),
-                                    connectionOption.getMqttPubRecTimeout(), TimeUnit.SECONDS)
+                                    connectionOption.getPubRecTimeout(), TimeUnit.SECONDS)
                                 )
                                 .build()
                             );
@@ -624,20 +617,33 @@ public class MqttConnection {
         }
 
         private void retransmitQos1(int packetId) {
-            MqttQos1PendingMessage pending = pendingPublishQos1Messages.get(packetId);
+            MqttQos1TxMessage pending = pendingTxQos1Messages.get(packetId);
             if (pending != null) {
-                channel.writeAndFlush(makeDupPacket(pending.getPacket()));
-                pending.setTimeout(timer.newTimeout(timeout2 -> retransmitQos2(packetId),
-                    connectionOption.getMqttPubRecTimeout(), TimeUnit.SECONDS));
+                int retransmitCount = pending.getRetransmitCount();
+                if (retransmitCount < connectionOption.getRetransmitMax()) {
+                    channel.writeAndFlush(makeDupPacket(pending.getPacket()));
+                    pending.setTimeout(timer.newTimeout(timeout2 -> retransmitQos1(packetId),
+                        connectionOption.getPubAckTimeout(), TimeUnit.SECONDS));
+                    pending.setRetransmitCount(retransmitCount + 1);
+                } else {
+                    pending.getPublishResultHandler().onError(MqttConnection.this, new MqttClientException("QoS 1 retransmit max reached"));
+                }
+
             }
         }
 
         private void retransmitQos2(int packetId) {
-            MqttQos2PendingMessage pending = pendingPublishQos2Messages.get(packetId);
-            if (pending != null) {
-                channel.writeAndFlush(makeDupPacket(pending.getPacket()));
-                pending.setTimeout(timer.newTimeout(timeout2 -> retransmitQos2(packetId),
-                    connectionOption.getMqttPubRecTimeout(), TimeUnit.SECONDS));
+            MqttQos2TxMessage pending = pendingTxQos2Messages.get(packetId);
+            if (pending != null ) {
+                int retransmitCount = pending.getRetransmitCount();
+                if (retransmitCount < connectionOption.getRetransmitMax()) {
+                    channel.writeAndFlush(makeDupPacket(pending.getPacket()));
+                    pending.setTimeout(timer.newTimeout(timeout2 -> retransmitQos2(packetId),
+                        connectionOption.getPubRecTimeout(), TimeUnit.SECONDS));
+                    pending.setRetransmitCount(retransmitCount + 1);
+                } else {
+                    pending.getPublishResultHandler().onError(MqttConnection.this, new MqttClientException("QoS 2 retransmit max reached"));
+                }
             }
         }
 
@@ -704,6 +710,15 @@ public class MqttConnection {
 
         public void pubRec(int packetId) {
             MqttV311PubRecPacket packet = MqttV311PubRecPacket.builder().packetId(packetId).build();
+            channel.writeAndFlush(packet).addListener(future -> {
+                if (!future.isSuccess()) {
+                    throwException(future.cause());
+                }
+            });
+        }
+
+        public void pubRel(int packetId) {
+            MqttV311PubRelPacket packet = MqttV311PubRelPacket.builder().packetId(packetId).build();
             channel.writeAndFlush(packet).addListener(future -> {
                 if (!future.isSuccess()) {
                     throwException(future.cause());

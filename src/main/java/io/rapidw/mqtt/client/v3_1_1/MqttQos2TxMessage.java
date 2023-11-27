@@ -1,10 +1,25 @@
+/**
+ * Copyright 2023 Rapidw
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.rapidw.mqtt.client.v3_1_1;
 
 import io.netty.util.Timeout;
 import io.rapidw.mqtt.client.v3_1_1.handler.MqttPublishResultHandler;
 import io.rapidw.mqtt.codec.v3_1_1.MqttV311PublishPacket;
 
-public class MqttQos2PendingMessage {
+class MqttQos2TxMessage {
 
     private MqttV311PublishPacket packet;
     private final MqttPublishResultHandler publishResultHandler;
@@ -13,12 +28,13 @@ public class MqttQos2PendingMessage {
     private Status status;
     public enum Status {
         PUBLISH,
-        PUBREC,
         PUBREL,
     }
 
-    MqttQos2PendingMessage(MqttV311PublishPacket packet, MqttPublishResultHandler publishResultHandler,
-                           Timeout timeout, Status status) {
+    private int retransmitCount;
+
+    MqttQos2TxMessage(MqttV311PublishPacket packet, MqttPublishResultHandler publishResultHandler,
+                      Timeout timeout, Status status) {
         this.packet = packet;
         this.publishResultHandler = publishResultHandler;
         this.timeout = timeout;
@@ -53,38 +69,46 @@ public class MqttQos2PendingMessage {
         this.status = status;
     }
 
-    public static MqttQos2PendingMessage.MqttQos2PendingMessageBuilder builder() {
-        return new MqttQos2PendingMessage.MqttQos2PendingMessageBuilder();
+    public static Builder builder() {
+        return new Builder();
     }
 
-    public static class MqttQos2PendingMessageBuilder {
+    public int getRetransmitCount() {
+        return this.retransmitCount;
+    }
+
+    public void setRetransmitCount(int retransmitCount) {
+        this.retransmitCount = retransmitCount;
+    }
+
+    public static class Builder {
         private MqttV311PublishPacket packet;
         private MqttPublishResultHandler publishResultHandler;
         private Timeout timeout;
         private Status status;
 
-        public MqttQos2PendingMessage.MqttQos2PendingMessageBuilder packet(MqttV311PublishPacket packet) {
+        public Builder packet(MqttV311PublishPacket packet) {
             this.packet = packet;
             return this;
         }
 
-        public MqttQos2PendingMessage.MqttQos2PendingMessageBuilder publishResultHandler(MqttPublishResultHandler publishResultHandler) {
+        public Builder publishResultHandler(MqttPublishResultHandler publishResultHandler) {
             this.publishResultHandler = publishResultHandler;
             return this;
         }
 
-        public MqttQos2PendingMessage.MqttQos2PendingMessageBuilder timeout(Timeout timeout) {
+        public Builder timeout(Timeout timeout) {
             this.timeout = timeout;
             return this;
         }
 
-        public MqttQos2PendingMessage.MqttQos2PendingMessageBuilder status(Status status) {
+        public Builder status(Status status) {
             this.status = status;
             return this;
         }
 
-        public MqttQos2PendingMessage build() {
-            return new MqttQos2PendingMessage(packet, publishResultHandler, timeout, status);
+        public MqttQos2TxMessage build() {
+            return new MqttQos2TxMessage(packet, publishResultHandler, timeout, status);
         }
     }
 }
