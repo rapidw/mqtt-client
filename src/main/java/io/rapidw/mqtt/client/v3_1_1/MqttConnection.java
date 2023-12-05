@@ -27,6 +27,7 @@ import io.netty.util.concurrent.Promise;
 import io.netty.util.concurrent.ScheduledFuture;
 import io.rapidw.mqtt.client.v3_1_1.handler.*;
 import io.rapidw.mqtt.codec.v3_1_1.*;
+import lombok.val;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -259,7 +260,10 @@ public class MqttConnection {
             MqttQos1TxMessage pending = pendingTxQos1Messages.remove(packet.getPacketId());
             if (pending != null) {
                 pending.getTimeout().cancel();
-                pending.getPublishResultHandler().onSuccess(MqttConnection.this);
+                val publishResultHandler = pending.getPublishResultHandler();
+                if (publishResultHandler != null) {
+                    publishResultHandler.onSuccess(MqttConnection.this);
+                }
             } else {
                 throwException(new MqttClientException("invalid packetId in PUBACK packet, pending publish message not found"));
             }
@@ -301,7 +305,10 @@ public class MqttConnection {
             MqttQos2TxMessage pending = pendingTxQos2Messages.remove(packet.getPacketId());
             if (pending != null && pending.getStatus() == MqttQos2TxMessage.Status.PUBREL) {
                 pending.getTimeout().cancel();
-                pending.getPublishResultHandler().onSuccess(MqttConnection.this);
+                val publishResultHandler = pending.getPublishResultHandler();
+                if (publishResultHandler != null) {
+                    publishResultHandler.onSuccess(MqttConnection.this);
+                }
             } else {
                 throwException(new MqttClientException("invalid packetId in PUBACK packet, pending message not found"));
             }
@@ -610,9 +617,12 @@ public class MqttConnection {
                             break;
                     }
                 } else {
-                    mqttPublishResultHandler.onError(MqttConnection.this, future.cause());
+                    if (mqttPublishResultHandler != null) {
+                        mqttPublishResultHandler.onError(MqttConnection.this, future.cause());
+                    } else {
+                        throwException(future.cause());
+                    }
                 }
-
             });
         }
 
